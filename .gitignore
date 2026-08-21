@@ -1,0 +1,43 @@
+# Env / Secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node (frontend, e2e tests, blockchain)
+node_modules/
+npm-debug.log*
+dist/
+dist-ssr/
+
+# Python (backend aiService)
+.pytest_cache/
+
+# Hardhat (backend blockchain) — scoped so it doesn't catch aiService/mlModel/artifacts/
+backend/blockchain/artifacts/
+backend/blockchain/cache/
+
+# Terraform / Infra state
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# IDE / OS
+.DS_Store
+.vscode/
+.idea/
+
+# F3 하자 예측 모델 — 생성물(값 분포 풀·합성 데이터셋·학습 아티팩트).
+# data/reviews/, data/llm_features/ 는 예외 — claude 판정 캐시·Gemini 피처
+# 캐시는 재현성 아티팩트라 커밋한다(설계서 5.5, 계획서 10단계). 부모 디렉토리
+# 전체를 제외하면 하위 경로 재포함(!)이 동작하지 않으므로 와일드카드(`data/*`)로
+# 항목 단위 제외 + 개별 재포함 조합을 쓴다.
+ai/defect_model/data/*
+!ai/defect_model/data/reviews/
+!ai/defect_model/data/llm_features/

@@ -1,0 +1,115 @@
+{
+  "generated_at": "2026-06-13T16:15:12.520726",
+  "lc_no": "LC-2022-006",
+  "is_valid": false,
+  "pipeline": "Rule-based + Llama3 sLLM",
+  "summary": {
+    "defect_count": 2,
+    "warning_count": 2,
+    "verdict": "하자 2건 발견"
+  },
+  "bl_fields": {
+    "bl_no": "HG441214",
+    "shipper": "GONG YOUNG MACHINERY CO., LTD.",
+    "consignee": "JARBOR COMPLIANCE CO., LTD.",
+    "notify_party": "KENRI BAKERY DELI CO., LTD.",
+    "vessel": null,
+    "voyage_no": "Vessel",
+    "port_of_loading": "TROMSOE, NORWAY",
+    "port_of_discharge": "OSAKA, JAPAN",
+    "description_of_goods": "Marks and No. Pkgs / SUTURES AND COVERINGS / CABLE ASSEMBLY, SPECIAL PURPOSE / ELECTRICAL. W5273201 / SHOCK ABSORBER, DIRECT OPERATED",
+    "gross_weight": "290 KG",
+    "measurement": "267.85 CBM",
+    "date_of_issue": "2020-01-10",
+    "place_of_issue": "GISKE, NORWAY FOUR",
+    "on_board_date": "2019-06-30",
+    "total_freight": "$7,417.72"
+  },
+  "lc_conditions": {
+    "lc_no": "LC-2022-006",
+    "expiry_date": "2020-12-31",
+    "latest_shipment_date": "2020-06-30",
+    "port_of_loading": null,
+    "port_of_discharge": null,
+    "consignee": "JARBOR COMPLIANCE CO., LTD.",
+    "description_of_goods": "MEDICAL SUTURES, SURGICAL COVERINGS, STERILE SUPPLIES",
+    "max_gross_weight_kg": 1500.0,
+    "max_measurement_cbm": 1000.0
+  },
+  "validation": {
+    "is_valid": false,
+    "defect_count": 2,
+    "warning_count": 2,
+    "defects": [
+      {
+        "code": "D006",
+        "field": "description_of_goods",
+        "description": "화물 명세에 다음 키워드가 없습니다: MEDICAL SUTURES, SURGICAL COVERINGS, STERILE SUPPLIES",
+        "bl_value": "Marks and No. Pkgs / SUTURES AND COVERINGS / CABLE ASSEMBLY, SPECIAL PURPOSE / ELECTRICAL. W5273201 ",
+        "lc_value": "MEDICAL SUTURES, SURGICAL COVERINGS, STERILE SUPPLIES",
+        "severity": "ERROR"
+      },
+      {
+        "code": "LLM-002",
+        "field": "date_of_issue",
+        "description": "[LLM] Date of issue '2020-01-10' does not match the latest shipment date '2020-06-30'",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "ERROR"
+      },
+      {
+        "code": "D011",
+        "field": "vessel",
+        "description": "선박명이 누락되었습니다",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "WARNING"
+      },
+      {
+        "code": "LLM-001",
+        "field": "port_of_discharge",
+        "description": "[LLM] Port of discharge 'OSAKA, JAPAN' does not match the expected format (e.g., 'PUSAN, KOREA')",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "WARNING"
+      }
+    ]
+  },
+  "llm_analysis": {
+    "overall_verdict": "DISCREPANT",
+    "confidence": 0.8,
+    "rule_reviews": [
+      {
+        "code": "D006",
+        "confirmed": true,
+        "reasoning": "LC description keywords are present in the B/L, but the B/L description does not exactly match"
+      },
+      {
+        "code": "D011",
+        "confirmed": true,
+        "reasoning": "Vessel name is missing from both LC and B/L"
+      }
+    ],
+    "additional_findings": [
+      {
+        "field": "port_of_discharge",
+        "code": "LLM-001",
+        "description": "Port of discharge 'OSAKA, JAPAN' does not match the expected format (e.g., 'PUSAN, KOREA')",
+        "severity": "WARNING",
+        "reasoning": "The port name is written in English, but it should be in Korean for consistency with other ports"
+      },
+      {
+        "field": "date_of_issue",
+        "code": "LLM-002",
+        "description": "Date of issue '2020-01-10' does not match the latest shipment date '2020-06-30'",
+        "severity": "ERROR",
+        "reasoning": "The B/L shows a later on-board date than the LC's latest shipment date"
+      }
+    ],
+    "contextual_summary": "Discrepancies found in port name and date of issue. The vessel name is missing, but it may be considered a false positive due to lack of information."
+  },
+  "llm_merge_stats": {
+    "demoted_to_warning": 0,
+    "llm_added_issues": 2
+  }
+}

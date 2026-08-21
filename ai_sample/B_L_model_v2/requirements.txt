@@ -1,0 +1,20 @@
+# B/L AI 하자 검증 시스템 의존성
+
+# 핵심 (필수)
+numpy>=1.24.0
+
+# 이미지 전처리
+opencv-python>=4.8.0
+
+# OCR (이미지에서 직접 추출 시 필요)
+paddlepaddle>=2.5.0
+paddleocr>=2.7.0
+
+# 자연어 처리 (선택)
+spacy>=3.7.0
+
+# PDF 리포트 생성 (선택)
+reportlab>=4.0.0
+
+# 데이터 검증
+pydantic>=2.0.0

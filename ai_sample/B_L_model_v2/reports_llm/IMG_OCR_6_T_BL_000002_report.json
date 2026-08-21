@@ -1,0 +1,139 @@
+{
+  "generated_at": "2026-06-04T20:36:28.201322",
+  "lc_no": "LC-2022-SAMPLE-001",
+  "is_valid": false,
+  "pipeline": "Rule-based + Llama3 sLLM",
+  "summary": {
+    "defect_count": 5,
+    "warning_count": 1,
+    "verdict": "하자 5건 발견"
+  },
+  "bl_fields": {
+    "bl_no": "HG290309",
+    "shipper": "TEL)+72-563-958-2962 FAX)+17-311-527-5439 DHHJ FRANCHISING CO., LTD. 718-566-1968 198 WILLIAM ANGLISS DRIVE HILL, VIC 2249, AUSTRALIA TEL)+69-104-064-1087 FAX)+28-747-341-0137 TRY ENERGY CO., LTD. 211",
+    "consignee": "HG290309 DHHJ FRANCHISING CO., LTD. 718-566-1968 1 KERPER STREET, METAIRIE, CA 79405, UNITED STATES TEL)+97-805-619-7537 FAX)+51-533-309-4245",
+    "notify_party": "DADGER BROTHERS MOVING CO., LTD. 83-9 REEVES ROAD PAKURANGA, 1060, NEW ZEALAND CFS/CY TEL)+93-805-314-9428 FAX)+14-859-817-5271",
+    "vessel": "MSC BIANCA",
+    "voyage_no": null,
+    "port_of_loading": "DLSU8179031 27 PKG CELL ASSEMBLY, 259KG 752.18 CBM FOR OPTICAL INSTRUMENTS K536400 74 PKG STRAP, WEBBING 324KG 789.35 CBM 40 PKG DRILLING, BORING, GRINDING MACHINE, 441KG 497.28 CBM",
+    "port_of_discharge": "DLSU8179031 27 PKG CELL ASSEMBLY, 259KG 752.18 CBM FOR OPTICAL INSTRUMENTS 74 PKG STRAP, WEBBING 324KG 789.35 CBM 40 PKG DRILLING, BORING, GRINDING MACHINE, 441KG 497.28 CBM",
+    "description_of_goods": "SAW MACHINE, ETC. TOTAL 884KG 349.64 CBM SAY 88 BUNDLES ONLY THREE METER ONLY DDU $1,741.56 JUN 11, 2013 VITORIA, SPAIN AN SEMICONDUCTOR CO., LTD. FOUR (4) PART LEADER",
+    "gross_weight": "884 KG",
+    "measurement": "349.64 CBM",
+    "date_of_issue": null,
+    "place_of_issue": "VITORIA, SPAIN AN SEMICONDUCTOR CO., LTD. FOUR (4) PART LEADER SEP 06, 2006 ULAN RYOO",
+    "on_board_date": null,
+    "total_freight": "$1,741.56"
+  },
+  "lc_conditions": {
+    "lc_no": "LC-2022-SAMPLE-001",
+    "expiry_date": "12-31-2022",
+    "latest_shipment_date": "12-15-2022",
+    "port_of_loading": "BUSAN",
+    "port_of_discharge": "HAMBURG",
+    "consignee": "PW JONES COMPANY",
+    "description_of_goods": "POWER CONVERTER, PAINTS, PRINTING INKS",
+    "max_gross_weight_kg": 100000.0,
+    "max_measurement_cbm": 2000.0
+  },
+  "validation": {
+    "is_valid": false,
+    "defect_count": 5,
+    "warning_count": 1,
+    "defects": [
+      {
+        "code": "D005",
+        "field": "consignee",
+        "description": "Consignee가 L/C 지정과 불일치합니다",
+        "bl_value": "HG290309 DHHJ FRANCHISING CO., LTD. 718-566-1968 1 KERPER STREET, METAIRIE, CA 79405, UNITED STATES TEL)+97-805-619-7537 FAX)+51-533-309-4245",
+        "lc_value": "PW JONES COMPANY",
+        "severity": "ERROR"
+      },
+      {
+        "code": "D003",
+        "field": "port_of_loading",
+        "description": "선적항이 L/C 지정 항구와 불일치합니다",
+        "bl_value": "DLSU8179031 27 PKG CELL ASSEMBLY, 259KG 752.18 CBM FOR OPTICAL INSTRUMENTS K536400 74 PKG STRAP, WEBBING 324KG 789.35 CBM 40 PKG DRILLING, BORING, GRINDING MACHINE, 441KG 497.28 CBM",
+        "lc_value": "BUSAN",
+        "severity": "ERROR"
+      },
+      {
+        "code": "D004",
+        "field": "port_of_discharge",
+        "description": "양하항이 L/C 지정 항구와 불일치합니다",
+        "bl_value": "DLSU8179031 27 PKG CELL ASSEMBLY, 259KG 752.18 CBM FOR OPTICAL INSTRUMENTS 74 PKG STRAP, WEBBING 324KG 789.35 CBM 40 PKG DRILLING, BORING, GRINDING MACHINE, 441KG 497.28 CBM",
+        "lc_value": "HAMBURG",
+        "severity": "ERROR"
+      },
+      {
+        "code": "D002",
+        "field": "on_board_date",
+        "description": "선적일 정보가 누락되었습니다",
+        "bl_value": null,
+        "lc_value": "12-15-2022",
+        "severity": "ERROR"
+      },
+      {
+        "code": "D006",
+        "field": "description_of_goods",
+        "description": "화물 명세에 다음 키워드가 없습니다: POWER CONVERTER, PAINTS, PRINTING INKS",
+        "bl_value": "SAW MACHINE, ETC. TOTAL 884KG 349.64 CBM SAY 88 BUNDLES ONLY THREE METER ONLY DDU $1,741.56 JUN 11, ",
+        "lc_value": "POWER CONVERTER, PAINTS, PRINTING INKS",
+        "severity": "ERROR"
+      },
+      {
+        "code": "LLM-001",
+        "field": "port_of_discharge",
+        "description": "[LLM] Port name variations may indicate a different port, but further investigation is required to confirm",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "WARNING"
+      }
+    ]
+  },
+  "llm_analysis": {
+    "overall_verdict": "DISCREPANT",
+    "confidence": 0.8,
+    "rule_reviews": [
+      {
+        "code": "D005",
+        "confirmed": true,
+        "reasoning": "Consignee name contains additional information not present in L/C specification"
+      },
+      {
+        "code": "D003",
+        "confirmed": true,
+        "reasoning": "Port of loading matches L/C specification"
+      },
+      {
+        "code": "D004",
+        "confirmed": true,
+        "reasoning": "Port of discharge does not match L/C specification due to different port name variations"
+      },
+      {
+        "code": "D002",
+        "confirmed": true,
+        "reasoning": "On-board date is null, but L/C specifies a shipment date"
+      },
+      {
+        "code": "D006",
+        "confirmed": true,
+        "reasoning": "Description of goods does not contain the specified keywords"
+      }
+    ],
+    "additional_findings": [
+      {
+        "field": "port_of_discharge",
+        "code": "LLM-001",
+        "description": "Port name variations may indicate a different port, but further investigation is required to confirm",
+        "severity": "WARNING",
+        "reasoning": "Different port names (BUSAN vs PUSAN) may be used in practice, but this discrepancy requires verification"
+      }
+    ],
+    "contextual_summary": "The bill of lading contains several discrepancies, including a mismatched consignee name and description of goods. However, some discrepancies were confirmed as false positives or require further investigation."
+  },
+  "llm_merge_stats": {
+    "demoted_to_warning": 0,
+    "llm_added_issues": 1
+  }
+}

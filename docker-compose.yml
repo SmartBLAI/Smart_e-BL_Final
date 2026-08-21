@@ -1,0 +1,181 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: smart-ebl-postgres
+    restart: unless-stopped
+    # env_file 은 쓰지 않습니다. compose가 프로젝트 루트 .env 를 자동으로 읽어 아래
+    # ${...} 치환에 사용하며, env_file 을 쓰면 AWS 키 등 무관한 값까지 DB 컨테이너로
+    # 주입됩니다.
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required (.env 참고)}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required (.env 참고)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required (.env 참고)}
+      # initdb 시점에만 적용됩니다 (볼륨이 비어 있을 때).
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C.UTF-8"
+      TZ: ${TZ:-Asia/Seoul}
+    ports:
+      # 기본은 루프백 바인딩. Docker publish는 호스트 방화벽(ufw/firewalld)을 우회하므로
+      # 0.0.0.0 으로 열면 EC2 보안그룹만이 유일한 방어선이 됩니다.
+      - "${POSTGRES_BIND_HOST:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # PostgreSQL 18부터 이미지의 VOLUME 경로가 /var/lib/postgresql 로 변경되었습니다.
+      # (PGDATA = /var/lib/postgresql/18/docker)
+      - postgres-data:/var/lib/postgresql
+      # *.sql / *.sh 파일은 최초 기동(빈 볼륨) 시 1회만 실행됩니다.
+      - ./infra/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    # 기본 /dev/shm 64MB는 병렬 쿼리/대용량 정렬에서 부족합니다.
+    shm_size: 256mb
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smart_ebl} -d ${POSTGRES_DB:-smart_ebl}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      # 소형 EC2에서 로그가 디스크를 채우는 것을 방지합니다.
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ai-service:
+    build: ./backend/aiService
+    container_name: smart-ebl-ai-service
+    restart: unless-stopped
+    environment:
+      # 프론트가 실제로 뜨는 출처를 허용해야 브라우저가 직접 호출 가능.
+      # localhost 로 고정하면 EC2/도메인에서 시연할 때 원격 브라우저가 CORS로
+      # 막힌다 — PUBLIC_ORIGIN(.env)으로 배포 환경마다 바꾼다.
+      CORS_ALLOW_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost:8080}
+      # postgres 와 같은 이유로 env_file 은 안 쓴다(SSM 이 채우는 루트 .env 는
+      # AWS/Docker Hub/Cloudflare 토큰까지 한 파일에 다 있다) — 이 컨테이너가
+      # 실제로 쓰는 변수만 하나씩 명시로 매핑한다.
+      ENV: ${ENV:-production}
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?AI_INTERNAL_TOKEN is required (.env 참고) — /reality/check 등을 인증 없이 인터넷에 열어두지 않기 위한 공유 시크릿 헤더}
+      REALITY_EVENT_SOURCE: ${REALITY_EVENT_SOURCE:-ulsan}
+      ULSAN_VTS_BASE_URL: ${ULSAN_VTS_BASE_URL:-}
+      ULSAN_VTS_SERVICE_KEY: ${ULSAN_VTS_SERVICE_KEY:-}
+      REPORT_SHARE_SECRET: ${REPORT_SHARE_SECRET:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      # ai/defect_model(비배포 트리)의 GEMINI_API_KEY 와 이름이 겹치지 않도록
+      # 루트 .env 쪽 변수명은 접두사를 붙였다 — 컨테이너 안에서는 aiService가
+      # 실제로 읽는 이름(GEMINI_API_KEY)으로 다시 매핑한다.
+      GEMINI_API_KEY: ${AI_SERVICE_GEMINI_API_KEY:-}
+      # F2 ⑤단계 · F1 구조화 추출 스위치. 컨테이너는 env_file 을 안 쓰므로
+      # 여기에 없으면 backend/aiService/.env 에 뭘 적어두든 안 들어간다 —
+      # 실제로 두 기능이 로컬에서만 켜지고 도커에서는 조용히 꺼져 있었다.
+      TERMS_LLM_SELECT: ${TERMS_LLM_SELECT:-false}
+      LLM_STRUCTURED_EXTRACT: ${LLM_STRUCTURED_EXTRACT:-false}
+      # 비우면 코드 기본값(report/llm_providers.DEFAULT_GEMINI_MODEL)을 쓴다.
+      LLM_MODEL: ${LLM_MODEL:-}
+    ports:
+      # 호스트 5000은 macOS ControlCenter(AirPlay Receiver)가 씀 — 5050으로 노출
+      - "5050:5000"
+    # curl/wget이 이미지에 없어 python 표준 라이브러리로 대신한다(이미지에
+    # 새 패키지를 추가하지 않기 위해).
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request as u; u.urlopen('http://localhost:5000/health', timeout=3)\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    # OCR(PaddleOCR)이 무거워 상한 없이 두면 컨테이너 하나가 EC2 전체 메모리를
+    # 잡아먹고 postgres·frontend까지 같이 멎을 수 있다. 실측 없이 정한 값이라
+    # OOM이 잦으면 올릴 것.
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  # backend/api (Express 게이트웨이)는 아직 .gitkeep 뿐인 빈 스캐폴드라 여기 없음.
+  # 대신 src/smart_e_bl(Python/FastAPI)을 게이트웨이로 씀 — 아래 api 서비스.
+
+  api:
+    build:
+      context: .
+      dockerfile: ./infra/docker/gateway.Dockerfile
+    container_name: smart-ebl-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # DATABASE_URL을 여기서 문자열로 이어붙이지 않는다 — YAML 보간은 URL
+      # 인코딩을 못 해서 비밀번호에 @/:# 가 있으면 접속 문자열이 깨진다
+      # (P2-13). 대신 조각을 그대로 넘기고, gateway-entrypoint.sh 가 컨테이너
+      # 기동 시 Python(urllib.parse.quote)으로 인코딩해 조립한다.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-smart_ebl}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-smart_ebl}
+      # ai-service와 같은 이유·같은 값 — PUBLIC_ORIGIN(.env) 참고.
+      CORS_ALLOW_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost:8080}
+      # 업로드 원본 파일이 저장되는 곳. 아래 document-storage 볼륨이 붙는
+      # 경로와 반드시 같아야 한다. 이 줄이 없으면 config.py 기본값인
+      # 상대경로(./data/documents)가 쓰여, 파일이 볼륨이 아니라 컨테이너 안
+      # /app/data/documents 에 쌓인다 — 컨테이너를 다시 만들 때마다(`up --build`)
+      # 올린 서류가 통째로 사라지고 화면에는 "file not found"만 남는다.
+      DOCUMENT_STORAGE_ROOT: /data/documents
+    ports:
+      # 프론트엔드는 nginx/vite의 /gw-api 프록시(도커 네트워크 내부, api:8000)로만
+      # 붙습니다 — 이 포트는 호스트에서 직접 디버깅할 때만 씁니다. postgres와
+      # 같은 이유로 127.0.0.1에만 바인딩합니다(§P1-1).
+      - "${GATEWAY_BIND_HOST:-127.0.0.1}:8001:8000"
+    volumes:
+      - document-storage:/data/documents
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request as u; u.urlopen('http://localhost:8000/health', timeout=3)\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # 브라우저가 aiService(5050)를 직접 호출할 때 쓰는 주소. localhost로
+        # 고정하면 원격 브라우저(EC2/도메인 시연)에서 호출이 실패한다 —
+        # AI_SERVICE_PUBLIC_URL(.env)로 배포 환경마다 바꾼다.
+        VITE_AI_API_BASE_URL: ${AI_SERVICE_PUBLIC_URL:-http://localhost:5050}
+        # ai-service 의 AI_INTERNAL_TOKEN 과 같은 값이어야 한다. 빌드 시점에
+        # JS 번들에 박히므로 "비밀"은 아니다 — 봇 최소 방어용(api/main.py 의
+        # _require_internal_token 주석 참고).
+        VITE_AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?AI_INTERNAL_TOKEN is required (.env 참고)}
+    container_name: smart-ebl-frontend
+    restart: unless-stopped
+    depends_on:
+      # 헬스체크를 통과하기 전(아직 룰·용어사전을 못 읽은 상태)에는 프론트를
+      # 먼저 띄워도 첫 요청들이 실패한다 — 순서만이 아니라 "준비됨"까지 기다린다.
+      ai-service:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+volumes:
+  postgres-data:
+  document-storage:

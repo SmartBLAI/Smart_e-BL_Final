@@ -1,0 +1,11 @@
+{
+  "lc_no": "LC-2022-SAMPLE-001",
+  "expiry_date": "12-31-2022",
+  "latest_shipment_date": "12-15-2022",
+  "port_of_loading": "BUSAN",
+  "port_of_discharge": "HAMBURG",
+  "consignee": "PW JONES COMPANY",
+  "description_of_goods": "POWER CONVERTER, PAINTS, PRINTING INKS",
+  "max_gross_weight_kg": 100000.0,
+  "max_measurement_cbm": 2000.0
+}

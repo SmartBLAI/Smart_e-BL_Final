@@ -1,0 +1,54 @@
+{
+  "generated_at": "2026-06-13T16:08:42.892195",
+  "lc_no": "LC-2022-001",
+  "is_valid": true,
+  "pipeline": "Rule-based",
+  "summary": {
+    "defect_count": 0,
+    "warning_count": 1,
+    "verdict": "이상 없음"
+  },
+  "bl_fields": {
+    "bl_no": "HG290309",
+    "shipper": "GAE WOON CO., LTD.",
+    "consignee": "DHHJ FRANCHISING CO., LTD.",
+    "notify_party": "TRY ENERGY CO., LTD.",
+    "vessel": null,
+    "voyage_no": "Vessel",
+    "port_of_loading": "OMA, JAPAN",
+    "port_of_discharge": "SHINJIMA, JAPAN",
+    "description_of_goods": "Marks and No. Pkgs / CELL ASSEMBLY / FOR OPTICAL INSTRUMENTS / STRAP, WEBBING / DRILLING, BORING, GRINDING MACHINE / SAW MACHINE, ETC.",
+    "gross_weight": "884 KG",
+    "measurement": "349.64 CBM",
+    "date_of_issue": "SEP 06, 2006",
+    "place_of_issue": "VITORIA, SPAIN FOUR",
+    "on_board_date": "JUN 11, 2013",
+    "total_freight": null
+  },
+  "lc_conditions": {
+    "lc_no": "LC-2022-001",
+    "expiry_date": "2022-12-31",
+    "latest_shipment_date": null,
+    "port_of_loading": null,
+    "port_of_discharge": null,
+    "consignee": "DHHJ FRANCHISING CO., LTD.",
+    "description_of_goods": "SAW MACHINE",
+    "max_gross_weight_kg": 1000.0,
+    "max_measurement_cbm": 800.0
+  },
+  "validation": {
+    "is_valid": true,
+    "defect_count": 0,
+    "warning_count": 1,
+    "defects": [
+      {
+        "code": "D011",
+        "field": "vessel",
+        "description": "선박명이 누락되었습니다",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "WARNING"
+      }
+    ]
+  }
+}

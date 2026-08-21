@@ -1,0 +1,54 @@
+# 지금까지 CI가 전혀 없어서, push/PR이 기존 테스트를 깨뜨려도 아무도 모르고
+# 지나갈 수 있었다. 최소한 "빌드되는가·테스트가 통과하는가"만 자동으로 확인한다.
+#
+# ai-service는 실제 배포 Dockerfile로 이미지를 빌드해 그 이미지 안에서
+# pytest를 돌린다 — requirements.txt를 CI용으로 따로 추리지 않고, 운영에
+# 나가는 이미지와 완전히 같은 환경에서 테스트한다(환경 차이로 "CI는
+# 통과했는데 배포는 깨짐"이 생기지 않도록).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ai-service:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/aiService
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Docker 이미지 빌드
+        run: docker build -t ai-service-ci .
+
+      - name: pytest 실행 (테스트는 .dockerignore로 이미지에서 빠지므로 실행 시 마운트)
+        run: |
+          docker run --rm \
+            -v "$PWD/tests:/app/tests" \
+            -v "$PWD/pytest.ini:/app/pytest.ini" \
+            --entrypoint python \
+            ai-service-ci -m pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      # tsc -b && vite build — 타입 오류와 빌드 실패를 여기서 잡는다.
+      # 프론트엔드에 별도 테스트가 아직 없어(진행 중 과제), 지금은 이게
+      # 유일한 자동 검증이다.
+      - run: npm run build

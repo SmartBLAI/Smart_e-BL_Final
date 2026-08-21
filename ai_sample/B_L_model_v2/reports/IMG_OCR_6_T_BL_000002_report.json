@@ -1,0 +1,129 @@
+{
+  "generated_at": "2026-06-04T21:42:23.796911",
+  "lc_no": "LC-2022-001",
+  "is_valid": true,
+  "pipeline": "Rule-based + Llama3 sLLM",
+  "summary": {
+    "defect_count": 0,
+    "warning_count": 4,
+    "verdict": "이상 없음"
+  },
+  "bl_fields": {
+    "bl_no": "HG290309",
+    "shipper": "GAE WOON CO., LTD.",
+    "consignee": "DHHJ FRANCHISING CO., LTD.",
+    "notify_party": "TRY ENERGY CO., LTD.",
+    "vessel": "MSC BIANCA",
+    "voyage_no": "V.112",
+    "port_of_loading": "OMA, JAPAN",
+    "port_of_discharge": "SHINJIMA, JAPAN",
+    "description_of_goods": "CELL ASSEMBLY / FOR OPTICAL INSTRUMENTS / STRAP, WEBBING / DRILLING, BORING, GRINDING MACHINE / SAW MACHINE, ETC.",
+    "gross_weight": "884 KG",
+    "measurement": "349.64 CBM",
+    "date_of_issue": "SEP 06, 2006",
+    "place_of_issue": "JUN",
+    "on_board_date": "JUN 11, 2013",
+    "total_freight": "$1,741.56"
+  },
+  "lc_conditions": {
+    "lc_no": "LC-2022-001",
+    "expiry_date": "2022-12-31",
+    "latest_shipment_date": null,
+    "port_of_loading": null,
+    "port_of_discharge": null,
+    "consignee": "DHHJ FRANCHISING CO., LTD.",
+    "description_of_goods": "SAW MACHINE",
+    "max_gross_weight_kg": 1000.0,
+    "max_measurement_cbm": 800.0
+  },
+  "validation": {
+    "is_valid": true,
+    "defect_count": 0,
+    "warning_count": 4,
+    "defects": [
+      {
+        "code": "LLM-001",
+        "field": "port_of_loading",
+        "description": "[LLM] Port name variation (OMA vs SHINJIMA) - Potential discrepancy",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "WARNING"
+      },
+      {
+        "code": "LLM-002",
+        "field": "port_of_discharge",
+        "description": "[LLM] Port name variation (SHINJIMA vs SHINJIMAA) - Potential discrepancy",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "WARNING"
+      },
+      {
+        "code": "LLM-003",
+        "field": "gross_weight",
+        "description": "[LLM] Weight discrepancy (884 KG vs 1000.0 KG) - Potential discrepancy",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "WARNING"
+      },
+      {
+        "code": "LLM-004",
+        "field": "measurement",
+        "description": "[LLM] Measurement discrepancy (349.64 CBM vs 800.0 CBM) - Potential discrepancy",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "WARNING"
+      }
+    ]
+  },
+  "llm_analysis": {
+    "overall_verdict": "COMPLIANT",
+    "confidence": 0.9,
+    "rule_reviews": [
+      {
+        "code": "D003",
+        "confirmed": true,
+        "reasoning": "No match found for 'Port of Loading' and 'Port of Discharge'"
+      },
+      {
+        "code": "D004",
+        "confirmed": true,
+        "reasoning": "Match found for 'Consignee' and 'Description of Goods'"
+      }
+    ],
+    "additional_findings": [
+      {
+        "field": "port_of_loading",
+        "code": "LLM-001",
+        "description": "Port name variation (OMA vs SHINJIMA) - Potential discrepancy",
+        "severity": "WARNING",
+        "reasoning": "While 'SHINJIMA' is mentioned, the primary port listed is 'OMA'"
+      },
+      {
+        "field": "port_of_discharge",
+        "code": "LLM-002",
+        "description": "Port name variation (SHINJIMA vs SHINJIMAA) - Potential discrepancy",
+        "severity": "WARNING",
+        "reasoning": "The port of discharge is listed as 'SHINJIMAA' which might be a typo or variation"
+      },
+      {
+        "field": "gross_weight",
+        "code": "LLM-003",
+        "description": "Weight discrepancy (884 KG vs 1000.0 KG) - Potential discrepancy",
+        "severity": "WARNING",
+        "reasoning": "The maximum allowed weight is 1000.0 KG, but the actual weight is 884 KG"
+      },
+      {
+        "field": "measurement",
+        "code": "LLM-004",
+        "description": "Measurement discrepancy (349.64 CBM vs 800.0 CBM) - Potential discrepancy",
+        "severity": "WARNING",
+        "reasoning": "The maximum allowed measurement is 800.0 CBM, but the actual measurement is 349.64 CBM"
+      }
+    ],
+    "contextual_summary": "While no major discrepancies were found, several contextual issues were identified that warrant further investigation and potential verification."
+  },
+  "llm_merge_stats": {
+    "demoted_to_warning": 0,
+    "llm_added_issues": 4
+  }
+}

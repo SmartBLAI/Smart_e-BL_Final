@@ -1,0 +1,126 @@
+{
+  "generated_at": "2026-06-04T20:36:40.321161",
+  "lc_no": "LC-2022-SAMPLE-001",
+  "is_valid": false,
+  "pipeline": "Rule-based + Llama3 sLLM",
+  "summary": {
+    "defect_count": 4,
+    "warning_count": 1,
+    "verdict": "하자 4건 발견"
+  },
+  "bl_fields": {
+    "bl_no": "HG730257",
+    "shipper": "T)+19-272-6889-7272 F)+43-876-7136-6723 JILLSON TRUCKING CO., LTD. 234-801-3654 8097 CREST E DR CROSSETT, AL 40168, UNITED STATES T)+78-635-0172-6716 F)+24-328-1372-1050 RELIANCE RS5 PPD UP CO., LTD. ",
+    "consignee": "HG730257 JILLSON TRUCKING CO., LTD. 234-801-3654 298 COLORADO DRIVE VERDUN, SA 1599, AUSTRALIA T)+93-081-1545-1912 RELIANCE RS5 PPD UP CO., LTD. F)+08-919-9648-7285",
+    "notify_party": "KOUSEHOLD INTERNATIONAL CO., LTD. ROOM 668, CUICUN TOWN, HUANGLONG COUNTY, HUBEI, CHINA 300297 CFS/CFS T)+98-143-6998-9887 F)+49-541-2195-4648 OJIKA, JAPAN YUDOMARI, JAPAN CFS/CY KARTAL, TURKEY",
+    "vessel": "OJIKA, JAPAN",
+    "voyage_no": null,
+    "port_of_loading": "DLSU9550186 61 PKG CABLE ASSEMBLY (CX-5121K) 283KG 683.81 CBM S191956 64 PKG POWER SUPPLY, FOR DC 5KV 981KG 651.56 CBM 53 PKG HOOK ASSEMBLY, FOR TOWING 559KG 635.12 CBM CBM",
+    "port_of_discharge": "DLSU9550186 61 PKG CABLE ASSEMBLY (CX-5121K) 283KG 683.81 CBM 64 PKG POWER SUPPLY, FOR DC 5KV 981KG 651.56 CBM 53 PKG HOOK ASSEMBLY, FOR TOWING 559KG 635.12 CBM CBM",
+    "description_of_goods": "TOTAL 475KG 351.97 CBM SAY 21 BUNDLES ONLY THREE YARD ONLY EXW $2,942.22 04-07-2016 TOKITSU, JAPAN OTEK IT SERVICES CO., LTD. 09-11-2015 FOUR (4) GENERAL MANAGER",
+    "gross_weight": "475 KG",
+    "measurement": "351.97 CBM",
+    "date_of_issue": "09-11-2015",
+    "place_of_issue": "09-11-2015 FOUR (4) GENERAL MANAGER",
+    "on_board_date": null,
+    "total_freight": "$2,942.22"
+  },
+  "lc_conditions": {
+    "lc_no": "LC-2022-SAMPLE-001",
+    "expiry_date": "12-31-2022",
+    "latest_shipment_date": "12-15-2022",
+    "port_of_loading": "BUSAN",
+    "port_of_discharge": "HAMBURG",
+    "consignee": "PW JONES COMPANY",
+    "description_of_goods": "POWER CONVERTER, PAINTS, PRINTING INKS",
+    "max_gross_weight_kg": 100000.0,
+    "max_measurement_cbm": 2000.0
+  },
+  "validation": {
+    "is_valid": false,
+    "defect_count": 4,
+    "warning_count": 1,
+    "defects": [
+      {
+        "code": "D005",
+        "field": "consignee",
+        "description": "Consignee가 L/C 지정과 불일치합니다",
+        "bl_value": "HG730257 JILLSON TRUCKING CO., LTD. 234-801-3654 298 COLORADO DRIVE VERDUN, SA 1599, AUSTRALIA T)+93-081-1545-1912 RELIANCE RS5 PPD UP CO., LTD. F)+08-919-9648-7285",
+        "lc_value": "PW JONES COMPANY",
+        "severity": "ERROR"
+      },
+      {
+        "code": "D003",
+        "field": "port_of_loading",
+        "description": "선적항이 L/C 지정 항구와 불일치합니다",
+        "bl_value": "DLSU9550186 61 PKG CABLE ASSEMBLY (CX-5121K) 283KG 683.81 CBM S191956 64 PKG POWER SUPPLY, FOR DC 5KV 981KG 651.56 CBM 53 PKG HOOK ASSEMBLY, FOR TOWING 559KG 635.12 CBM CBM",
+        "lc_value": "BUSAN",
+        "severity": "ERROR"
+      },
+      {
+        "code": "D004",
+        "field": "port_of_discharge",
+        "description": "양하항이 L/C 지정 항구와 불일치합니다",
+        "bl_value": "DLSU9550186 61 PKG CABLE ASSEMBLY (CX-5121K) 283KG 683.81 CBM 64 PKG POWER SUPPLY, FOR DC 5KV 981KG 651.56 CBM 53 PKG HOOK ASSEMBLY, FOR TOWING 559KG 635.12 CBM CBM",
+        "lc_value": "HAMBURG",
+        "severity": "ERROR"
+      },
+      {
+        "code": "D006",
+        "field": "description_of_goods",
+        "description": "화물 명세에 다음 키워드가 없습니다: POWER CONVERTER, PAINTS, PRINTING INKS",
+        "bl_value": "TOTAL 475KG 351.97 CBM SAY 21 BUNDLES ONLY THREE YARD ONLY EXW $2,942.22 04-07-2016 TOKITSU, JAPAN O",
+        "lc_value": "POWER CONVERTER, PAINTS, PRINTING INKS",
+        "severity": "ERROR"
+      },
+      {
+        "code": "LLM-001",
+        "field": "port_of_discharge",
+        "description": "[LLM] Port name variation may indicate incorrect or outdated information",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "WARNING"
+      }
+    ]
+  },
+  "llm_analysis": {
+    "overall_verdict": "DISCREPANT",
+    "confidence": 0.8,
+    "rule_reviews": [
+      {
+        "code": "D005",
+        "confirmed": true,
+        "reasoning": "Consignee name contains additional information not present in L/C specification"
+      },
+      {
+        "code": "D003",
+        "confirmed": true,
+        "reasoning": "Port of loading matches L/C specified port"
+      },
+      {
+        "code": "D004",
+        "confirmed": true,
+        "reasoning": "Port of discharge does not match L/C specified port"
+      },
+      {
+        "code": "D006",
+        "confirmed": true,
+        "reasoning": "Description of goods matches L/C specified description"
+      }
+    ],
+    "additional_findings": [
+      {
+        "field": "port_of_discharge",
+        "code": "LLM-001",
+        "description": "Port name variation may indicate incorrect or outdated information",
+        "severity": "WARNING",
+        "reasoning": "BUSAN and HAMBURG are the same port according to UCP 600"
+      }
+    ],
+    "contextual_summary": "Discrepancies found in consignee, port of discharge, and description of goods. Additional contextual finding suggests potential port name variation issue."
+  },
+  "llm_merge_stats": {
+    "demoted_to_warning": 0,
+    "llm_added_issues": 1
+  }
+}

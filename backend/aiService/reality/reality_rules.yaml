@@ -1,0 +1,78 @@
+# F6 통관·운송 현실 대조 룰 카탈로그 (기획안 5.6절)
+#
+# 데이터 소스는 울산항만공사 "항만 내 선박 운항정보" 하나뿐이다 — 이건
+# 선박 입출항/접안/투묘 관제 기록이지 통관 사건이 아니다. 그래서 원래
+# 기획안의 C-* 11건 중 관제 데이터만으로 판정 가능한 6건만 담는다
+# (`docs/ai-service/f6-customs-reality-check.md` §2 실행가능성 판정표).
+# 나머지(C-TIME-03/C-QTY-01/02/C-REL-01/C-ANOM-01)는 통관 신고 데이터나
+# 학습 표본이 없어 이 카탈로그에 없다 — 조용히 빠진 게 아니라 위 문서에
+# 이유가 적혀 있다.
+#
+# check  : reality/checks.py 의 REGISTRY 등록 이름.
+# weight : ruleEngine/rules.yaml 과 같은 대역(치명 0.30~0.40 / 경고
+#          0.08~0.15 / 참고 0.02).
+# message: {detail} 과 각 검사 함수가 넘기는 observed 키가 실행 시 치환된다.
+# verified: 미표기(전건 미검증) — ruleEngine/rules.yaml 과 같은 규약.
+
+version: 1
+
+rules:
+  - id: C-ROUTE-01
+    title: 서류 항구가 관제 기록과 무관
+    severity: critical
+    weight: 0.35
+    fields: [port_of_loading, port_of_discharge]
+    check: port_matches_source
+    source: 울산항만공사 항만 내 선박 운항정보 — 선박 입출항 관제 기록
+    message: 서류의 적재항/양륙항이 울산항인데 울산항 관제 기록에서 이 선박을 찾지 못했습니다. {detail}
+    remedy: 선명·콜사인 표기를 확인하거나 관제 기록을 다시 조회하세요.
+
+  - id: C-VSL-01
+    title: 선명 동명이선
+    severity: warning
+    weight: 0.10
+    fields: [vessel]
+    check: vessel_uniquely_matched
+    source: 울산항만공사 항만 내 선박 운항정보 — 선명(국문/영문) 대조
+    message: 선명으로 관제 기록에서 배를 하나로 특정하지 못했습니다({detail}). 콜사인을 확인하세요.
+    remedy: B/L 에 콜사인을 명기하거나 선명 표기를 관제 기록과 맞추세요.
+
+  - id: C-TIME-01
+    title: 본선적재일이 실제 입항일보다 앞섬
+    severity: critical
+    weight: 0.35
+    fields: [on_board_date]
+    check: on_board_not_before_arrival
+    source: 울산항만공사 항만 내 선박 운항정보 — 입항(ARRIVAL) 이벤트 jobDt
+    message: 본선적재일이 실제 입항일보다 앞섭니다. {detail}
+    remedy: 본선적재일을 선적서류·관제 기록과 대조해 정정하세요.
+
+  - id: C-TIME-02
+    title: 본선적재일이 실제 출항일보다 늦음
+    severity: critical
+    weight: 0.35
+    fields: [on_board_date]
+    check: on_board_not_after_departure
+    source: 울산항만공사 항만 내 선박 운항정보 — 출항(DEPARTURE) 이벤트 jobDt
+    message: 본선적재일이 실제 출항일보다 늦습니다. {detail}
+    remedy: 본선적재일을 선적서류·관제 기록과 대조해 정정하세요.
+
+  - id: C-TIME-04
+    title: 체류시간 이상치
+    severity: warning
+    weight: 0.10
+    fields: [on_board_date]
+    check: stay_duration_outlier
+    source: 울산항만공사 항만 내 선박 운항정보 — 같은 선박 전 항차 체류시간 분포(IQR)
+    message: 이 항차의 항내 체류시간이 같은 선박의 평소 범위를 벗어납니다. {detail}
+    remedy: 관제 기록을 확인해 접안 지연·설비 이상 등 사유가 있는지 검토하세요.
+
+  - id: C-STAT-01
+    title: 관제 이벤트 순서 위반
+    severity: info
+    weight: 0.02
+    fields: []
+    check: event_sequence_valid
+    source: 울산항만공사 항만 내 선박 운항정보 — 이벤트 코드(ioprtVtsType) 순서
+    message: 이 항차의 관제 이벤트 순서가 입항→(접안/투묘)→…→출항 문법과 어긋납니다. {detail}
+    remedy: 관제 기록 원본을 확인하세요. 서류 정정 대상이 아닐 수 있습니다.

@@ -1,0 +1,116 @@
+{
+  "description": "B/L 필드 추출 정확도 측정용 정답 데이터 (10개 L/C 매핑 샘플)",
+  "note": "parser.parse() 결과를 수작업 확인하여 검증한 값. 날짜 형식은 원본 OCR 그대로.",
+  "samples": [
+    {
+      "lc_id": "LC-2022-001",
+      "bl_file": "IMG_OCR_6_T_BL_000002.json",
+      "bl_no": "HG290309",
+      "shipper": "GAE WOON CO., LTD.",
+      "consignee": "DHHJ FRANCHISING CO., LTD.",
+      "port_of_loading": "OMA, JAPAN",
+      "port_of_discharge": "SHINJIMA, JAPAN",
+      "date_of_issue": "SEP 06, 2006",
+      "gross_weight": "884 KG"
+    },
+    {
+      "lc_id": "LC-2022-002",
+      "bl_file": "IMG_OCR_6_T_BL_000003.json",
+      "bl_no": "HG059556",
+      "shipper": "YOO IL TEXTILE CO., LTD.",
+      "consignee": "SUALITY IN PROPANE CO., LTD.",
+      "port_of_loading": "SIMAO, CHINA",
+      "port_of_discharge": "KOBE, JAPAN",
+      "date_of_issue": "2014-09-15",
+      "gross_weight": "710 KG"
+    },
+    {
+      "lc_id": "LC-2022-003",
+      "bl_file": "IMG_OCR_6_T_BL_000004.json",
+      "bl_no": "HG730257",
+      "shipper": "KAN KOOK ELECTRIC CO., LTD.",
+      "consignee": "JILLSON TRUCKING CO., LTD.",
+      "port_of_loading": "OJIKA, JAPAN",
+      "port_of_discharge": "YUDOMARI, JAPAN",
+      "date_of_issue": "09-11-2015",
+      "gross_weight": "475 KG"
+    },
+    {
+      "lc_id": "LC-2022-004",
+      "bl_file": "IMG_OCR_6_T_BL_000005.json",
+      "bl_no": "HG128887",
+      "shipper": "VTORM TEC CO., LTD.",
+      "consignee": "ALE SMOKY DISTILLERY CO., LTD.",
+      "port_of_loading": "KINOMOTO, JAPAN",
+      "port_of_discharge": "LEVANZO, ITALY",
+      "date_of_issue": "16-AUG-2009",
+      "gross_weight": "739 KG"
+    },
+    {
+      "lc_id": "LC-2022-005",
+      "bl_file": "IMG_OCR_6_T_BL_000006.json",
+      "bl_no": "HG254646",
+      "shipper": "VUNYANG TECH CO., LTD.",
+      "consignee": "APTIMA TAX RELIEF CO., LTD.",
+      "port_of_loading": "ROVINJ, CROATIA",
+      "port_of_discharge": "AOKATA, JAPAN",
+      "date_of_issue": "21-NOV-2005",
+      "gross_weight": "587 KG"
+    },
+    {
+      "lc_id": "LC-2022-006",
+      "bl_file": "IMG_OCR_6_T_BL_000007.json",
+      "bl_no": "HG441214",
+      "shipper": "GONG YOUNG MACHINERY CO., LTD.",
+      "consignee": "JARBOR COMPLIANCE CO., LTD.",
+      "port_of_loading": "TROMSOE, NORWAY",
+      "port_of_discharge": "OSAKA, JAPAN",
+      "date_of_issue": "2020-01-10",
+      "gross_weight": "290 KG"
+    },
+    {
+      "lc_id": "LC-2022-007",
+      "bl_file": "IMG_OCR_6_T_BL_000015.json",
+      "bl_no": "HG549368",
+      "shipper": "FAEHA SYNTHETICS CO., LTD.",
+      "consignee": "PUXEO ORATION CO., LTD.",
+      "port_of_loading": "ARVIKA, SWEDEN",
+      "port_of_discharge": "DISSAY, FRANCE",
+      "date_of_issue": "01-06-2018",
+      "gross_weight": "885 KG"
+    },
+    {
+      "lc_id": "LC-2022-008",
+      "bl_file": "IMG_OCR_6_T_BL_000016.json",
+      "bl_no": "HG243026",
+      "shipper": "FAE WOON CO., LTD.",
+      "consignee": "RX SAVINGS SOLUTIONS CO., LTD.",
+      "port_of_loading": "ROSAS, SPAIN",
+      "port_of_discharge": "TAU, NORWAY",
+      "date_of_issue": "07-MAY-2008",
+      "gross_weight": "538 KG"
+    },
+    {
+      "lc_id": "LC-2022-009",
+      "bl_file": "IMG_OCR_6_T_BL_000019.json",
+      "bl_no": "HG290710",
+      "shipper": "FREW C&C CO., LTD.",
+      "consignee": "DOHERENT SOLUTIONS CO., LTD.",
+      "port_of_loading": "FJALER, NORWAY",
+      "port_of_discharge": "ORVIKEN, SWEDEN",
+      "date_of_issue": "30-JAN-2003",
+      "gross_weight": "844 KG"
+    },
+    {
+      "lc_id": "LC-2022-010",
+      "bl_file": "IMG_OCR_6_T_BL_000007.json",
+      "bl_no": "HG441214",
+      "shipper": "GONG YOUNG MACHINERY CO., LTD.",
+      "consignee": "JARBOR COMPLIANCE CO., LTD.",
+      "port_of_loading": "TROMSOE, NORWAY",
+      "port_of_discharge": "OSAKA, JAPAN",
+      "date_of_issue": "2020-01-10",
+      "gross_weight": "290 KG"
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "generated_at": "2026-06-13T16:09:34.342397",
+  "lc_no": "LC-2022-002",
+  "is_valid": false,
+  "pipeline": "Rule-based",
+  "summary": {
+    "defect_count": 1,
+    "warning_count": 1,
+    "verdict": "하자 1건 발견"
+  },
+  "bl_fields": {
+    "bl_no": "HG059556",
+    "shipper": "YOO IL TEXTILE CO., LTD.",
+    "consignee": "SUALITY IN PROPANE CO., LTD.",
+    "notify_party": "Notify Party",
+    "vessel": null,
+    "voyage_no": "Vessel",
+    "port_of_loading": "SIMAO, CHINA",
+    "port_of_discharge": "KOBE, JAPAN",
+    "description_of_goods": "Marks and No. Pkgs / SWITCH ASSY-INDICATOR COVER,LH / CYLINDER BLOCK / HYDRAULIC ELECTRIC-PUMP / GASKET-OIL LEVEL PLUG",
+    "gross_weight": "710 KG",
+    "measurement": "934.41 CBM",
+    "date_of_issue": "2014-09-15",
+    "place_of_issue": "KARWAR, INDIA TWO",
+    "on_board_date": "2017-02-12",
+    "total_freight": "$9,667.50"
+  },
+  "lc_conditions": {
+    "lc_no": "LC-2022-002",
+    "expiry_date": "2014-10-31",
+    "latest_shipment_date": "2014-09-01",
+    "port_of_loading": null,
+    "port_of_discharge": null,
+    "consignee": "SUALITY IN PROPANE CO., LTD.",
+    "description_of_goods": null,
+    "max_gross_weight_kg": 2500.0,
+    "max_measurement_cbm": 1700.0
+  },
+  "validation": {
+    "is_valid": false,
+    "defect_count": 1,
+    "warning_count": 1,
+    "defects": [
+      {
+        "code": "D002",
+        "field": "on_board_date",
+        "description": "선적일(2017-02-12)이 L/C 최종 선적기한(2014-09-01)을 초과합니다",
+        "bl_value": "2017-02-12",
+        "lc_value": "2014-09-01",
+        "severity": "ERROR"
+      },
+      {
+        "code": "D011",
+        "field": "vessel",
+        "description": "선박명이 누락되었습니다",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "WARNING"
+      }
+    ]
+  }
+}

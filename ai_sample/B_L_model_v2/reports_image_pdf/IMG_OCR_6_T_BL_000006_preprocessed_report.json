@@ -1,0 +1,54 @@
+{
+  "generated_at": "2026-06-13T16:10:37.284685",
+  "lc_no": "LC-2022-005",
+  "is_valid": true,
+  "pipeline": "Rule-based",
+  "summary": {
+    "defect_count": 0,
+    "warning_count": 1,
+    "verdict": "이상 없음"
+  },
+  "bl_fields": {
+    "bl_no": "HG254646",
+    "shipper": "VUNYANG TECH CO., LTD.",
+    "consignee": "APTIMA TAX RELIEF CO., LTD.",
+    "notify_party": "HULLY ACCOUNTABLE CO., LTD.",
+    "vessel": null,
+    "voyage_no": "Vessel",
+    "port_of_loading": "ROVINJ, CROATIA",
+    "port_of_discharge": "AOKATA, JAPAN",
+    "description_of_goods": "Marks and No. Pkgs / SLIDE (SLIDE BODY) / BUSHING, RUBBER / ADJUSTER, CLASP, SPECIAL PURPOSE",
+    "gross_weight": "587 KG",
+    "measurement": "439.93 CBM",
+    "date_of_issue": "21-NOV-2005",
+    "place_of_issue": "RUNDVIK, SWEDEN",
+    "on_board_date": "23-JUL-2002",
+    "total_freight": null
+  },
+  "lc_conditions": {
+    "lc_no": "LC-2022-005",
+    "expiry_date": "2022-09-30",
+    "latest_shipment_date": null,
+    "port_of_loading": null,
+    "port_of_discharge": null,
+    "consignee": "APTIMA TAX RELIEF CO., LTD.",
+    "description_of_goods": null,
+    "max_gross_weight_kg": 2500.0,
+    "max_measurement_cbm": 1700.0
+  },
+  "validation": {
+    "is_valid": true,
+    "defect_count": 0,
+    "warning_count": 1,
+    "defects": [
+      {
+        "code": "D011",
+        "field": "vessel",
+        "description": "선박명이 누락되었습니다",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "WARNING"
+      }
+    ]
+  }
+}

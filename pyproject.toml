@@ -1,0 +1,53 @@
+[project]
+name = "smart-e-bl"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "yang6408", email = "redblue6408@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.19.1",
+    "asyncpg>=0.31.0",
+    "fastapi>=0.141.1",
+    "psycopg[binary]>=3.3.4",
+    "pydantic-settings>=2.15.0",
+    "python-multipart>=0.0.32",
+    "sqlalchemy[asyncio]>=2.0",
+    "uvicorn[standard]>=0.52.1",
+]
+
+[project.optional-dependencies]
+ml = ["xgboost==3.3.0", "scikit-learn>=1.5", "shap>=0.46",
+      "pandas>=2.2", "numpy>=1.26", "pyarrow>=17", "joblib>=1.4", "matplotlib>=3.9",
+      "pyyaml>=6.0", "google-genai>=1.0", "anthropic>=0.69"]
+
+[project.scripts]
+smart-ebl-worker = "smart_e_bl.worker.main:main"
+
+[build-system]
+requires = ["uv_build>=0.12.3,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+# `ai/defect_model` 은 네임스페이스 패키지(ai/__init__.py 없음)이므로 저장소 루트가
+# sys.path 에 있어야 `from ai.defect_model import ...` 절대 임포트가 동작한다.
+# `python -m pytest` 는 cwd 를 자동으로 넣지만 bare `pytest` 실행 파일은 그렇지
+# 않다 — README/작업 정의의 `pytest ai/defect_model/tests/` 명령이 그대로
+# 동작하도록 명시한다.
+pythonpath = ["."]
+asyncio_mode = "auto"
+# smart_e_bl.db.async_engine는 임포트 시점에 한 번만 만들어지는 모듈 전역
+# 커넥션 풀이다 — 테스트마다 새 이벤트 루프를 쓰면 이전 루프에 묶인 커넥션을
+# 재사용하려다 "attached to a different loop" 에러가 난다. 세션 전체가
+# 루프 하나를 공유하게 한다.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]

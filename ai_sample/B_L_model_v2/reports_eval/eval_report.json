@@ -1,0 +1,680 @@
+{
+  "generated_at": "2026-06-18T14:57:02.775151",
+  "report_type": "image_vs_label_accuracy",
+  "sample_count": 10,
+  "overall": {
+    "field_accuracy": 1.0,
+    "text_f1": 0.6263839218372425,
+    "field_accuracy_by_field": {
+      "bl_no": 1.0,
+      "shipper": 1.0,
+      "consignee": 1.0,
+      "port_of_loading": 1.0,
+      "port_of_discharge": 1.0,
+      "date_of_issue": 1.0,
+      "gross_weight": 1.0
+    }
+  },
+  "samples": [
+    {
+      "image_id": "IMG_OCR_6_T_BL_000002",
+      "label_file": "IMG_OCR_6_T_BL_000002.json",
+      "field_accuracy": 1.0,
+      "field_matched": 7,
+      "field_total": 7,
+      "text_metrics": {
+        "label_word_count": 122,
+        "ocr_word_count": 201,
+        "matched_word_count": 119,
+        "precision": 0.592,
+        "recall": 0.9754,
+        "f1": 0.7368
+      },
+      "fields": [
+        {
+          "field": "bl_no",
+          "expected": "HG290309",
+          "extracted": "HG290309",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "shipper",
+          "expected": "GAE WOON CO., LTD.",
+          "extracted": "GAE WOON CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "consignee",
+          "expected": "DHHJ FRANCHISING CO., LTD.",
+          "extracted": "DHHJ FRANCHISING CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_loading",
+          "expected": "OMA, JAPAN",
+          "extracted": "OMA, JAPAN",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_discharge",
+          "expected": "SHINJIMA, JAPAN",
+          "extracted": "SHINJIMA, JAPAN",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "date_of_issue",
+          "expected": "SEP 06, 2006",
+          "extracted": "SEP 06, 2006",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "gross_weight",
+          "expected": "884 KG",
+          "extracted": "884 KG",
+          "matched": true,
+          "match_type": "fuzzy"
+        }
+      ]
+    },
+    {
+      "image_id": "IMG_OCR_6_T_BL_000003",
+      "label_file": "IMG_OCR_6_T_BL_000003.json",
+      "field_accuracy": 1.0,
+      "field_matched": 7,
+      "field_total": 7,
+      "text_metrics": {
+        "label_word_count": 115,
+        "ocr_word_count": 194,
+        "matched_word_count": 115,
+        "precision": 0.5928,
+        "recall": 1.0,
+        "f1": 0.7443
+      },
+      "fields": [
+        {
+          "field": "bl_no",
+          "expected": "HG059556",
+          "extracted": "HG059556",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "shipper",
+          "expected": "YOO IL TEXTILE CO., LTD.",
+          "extracted": "YOO IL TEXTILE CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "consignee",
+          "expected": "SUALITY IN PROPANE CO., LTD.",
+          "extracted": "SUALITY IN PROPANE CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_loading",
+          "expected": "SIMAO, CHINA",
+          "extracted": "SIMAO, CHINA",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_discharge",
+          "expected": "KOBE, JAPAN",
+          "extracted": "KOBE, JAPAN",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "date_of_issue",
+          "expected": "2014-09-15",
+          "extracted": "2014-09-15",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "gross_weight",
+          "expected": "710 KG",
+          "extracted": "710 KG",
+          "matched": true,
+          "match_type": "fuzzy"
+        }
+      ]
+    },
+    {
+      "image_id": "IMG_OCR_6_T_BL_000004",
+      "label_file": "IMG_OCR_6_T_BL_000004.json",
+      "field_accuracy": 1.0,
+      "field_matched": 7,
+      "field_total": 7,
+      "text_metrics": {
+        "label_word_count": 119,
+        "ocr_word_count": 186,
+        "matched_word_count": 102,
+        "precision": 0.5484,
+        "recall": 0.8571,
+        "f1": 0.6689
+      },
+      "fields": [
+        {
+          "field": "bl_no",
+          "expected": "HG730257",
+          "extracted": "HG730257",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "shipper",
+          "expected": "KAN KOOK ELECTRIC CO., LTD.",
+          "extracted": "KAN KOOK ELECTRIC CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "consignee",
+          "expected": "JILLSON TRUCKING CO., LTD.",
+          "extracted": "JILLSON TRUCKING CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_loading",
+          "expected": "OJIKA, JAPAN",
+          "extracted": "OJIKA, JAPAN",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_discharge",
+          "expected": "YUDOMARI, JAPAN",
+          "extracted": "YUDOMARI, JAPAN",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "date_of_issue",
+          "expected": "09-11-2015",
+          "extracted": "09-11-2015",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "gross_weight",
+          "expected": "475 KG",
+          "extracted": "475 KG",
+          "matched": true,
+          "match_type": "fuzzy"
+        }
+      ]
+    },
+    {
+      "image_id": "IMG_OCR_6_T_BL_000005",
+      "label_file": "IMG_OCR_6_T_BL_000005.json",
+      "field_accuracy": 1.0,
+      "field_matched": 7,
+      "field_total": 7,
+      "text_metrics": {
+        "label_word_count": 119,
+        "ocr_word_count": 196,
+        "matched_word_count": 115,
+        "precision": 0.5867,
+        "recall": 0.9664,
+        "f1": 0.7302
+      },
+      "fields": [
+        {
+          "field": "bl_no",
+          "expected": "HG128887",
+          "extracted": "HG128887",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "shipper",
+          "expected": "VTORM TEC CO., LTD.",
+          "extracted": "VTORM TEC CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "consignee",
+          "expected": "ALE SMOKY DISTILLERY CO., LTD.",
+          "extracted": "ALE SMOKY DISTILLERY CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_loading",
+          "expected": "KINOMOTO, JAPAN",
+          "extracted": "KINOMOTO, JAPAN",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_discharge",
+          "expected": "LEVANZO, ITALY",
+          "extracted": "LEVANZO, ITALY",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "date_of_issue",
+          "expected": "16-AUG-2009",
+          "extracted": "16-AUG-2009",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "gross_weight",
+          "expected": "739 KG",
+          "extracted": "739 KG",
+          "matched": true,
+          "match_type": "fuzzy"
+        }
+      ]
+    },
+    {
+      "image_id": "IMG_OCR_6_T_BL_000006",
+      "label_file": "IMG_OCR_6_T_BL_000006.json",
+      "field_accuracy": 1.0,
+      "field_matched": 7,
+      "field_total": 7,
+      "text_metrics": {
+        "label_word_count": 115,
+        "ocr_word_count": 191,
+        "matched_word_count": 108,
+        "precision": 0.5654,
+        "recall": 0.9391,
+        "f1": 0.7059
+      },
+      "fields": [
+        {
+          "field": "bl_no",
+          "expected": "HG254646",
+          "extracted": "HG254646",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "shipper",
+          "expected": "VUNYANG TECH CO., LTD.",
+          "extracted": "VUNYANG TECH CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "consignee",
+          "expected": "APTIMA TAX RELIEF CO., LTD.",
+          "extracted": "APTIMA TAX RELIEF CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_loading",
+          "expected": "ROVINJ, CROATIA",
+          "extracted": "ROVINJ, CROATIA",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_discharge",
+          "expected": "AOKATA, JAPAN",
+          "extracted": "AOKATA, JAPAN",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "date_of_issue",
+          "expected": "21-NOV-2005",
+          "extracted": "21-NOV-2005",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "gross_weight",
+          "expected": "587 KG",
+          "extracted": "587 KG",
+          "matched": true,
+          "match_type": "fuzzy"
+        }
+      ]
+    },
+    {
+      "image_id": "IMG_OCR_6_T_BL_000007",
+      "label_file": "IMG_OCR_6_T_BL_000007.json",
+      "field_accuracy": 1.0,
+      "field_matched": 7,
+      "field_total": 7,
+      "text_metrics": {
+        "label_word_count": 119,
+        "ocr_word_count": 198,
+        "matched_word_count": 119,
+        "precision": 0.601,
+        "recall": 1.0,
+        "f1": 0.7508
+      },
+      "fields": [
+        {
+          "field": "bl_no",
+          "expected": "HG441214",
+          "extracted": "HG441214",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "shipper",
+          "expected": "GONG YOUNG MACHINERY CO., LTD.",
+          "extracted": "GONG YOUNG MACHINERY CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "consignee",
+          "expected": "JARBOR COMPLIANCE CO., LTD.",
+          "extracted": "JARBOR COMPLIANCE CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_loading",
+          "expected": "TROMSOE, NORWAY",
+          "extracted": "TROMSOE, NORWAY",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_discharge",
+          "expected": "OSAKA, JAPAN",
+          "extracted": "OSAKA, JAPAN",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "date_of_issue",
+          "expected": "2020-01-10",
+          "extracted": "2020-01-10",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "gross_weight",
+          "expected": "290 KG",
+          "extracted": "290 KG",
+          "matched": true,
+          "match_type": "fuzzy"
+        }
+      ]
+    },
+    {
+      "image_id": "IMG_OCR_6_T_BL_000008",
+      "label_file": "IMG_OCR_6_T_BL_000008.json",
+      "field_accuracy": 1.0,
+      "field_matched": 7,
+      "field_total": 7,
+      "text_metrics": {
+        "label_word_count": 107,
+        "ocr_word_count": 284,
+        "matched_word_count": 95,
+        "precision": 0.3345,
+        "recall": 0.8879,
+        "f1": 0.4859
+      },
+      "fields": [
+        {
+          "field": "bl_no",
+          "expected": "HG923612",
+          "extracted": "HG923612",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "shipper",
+          "expected": "TANG HYUN FABRIC CO., LTD.",
+          "extracted": "TANG HYUN FABRIC CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "consignee",
+          "expected": "TWO TIMES WARNER CO., LTD.",
+          "extracted": "TWO TIMES WARNER CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_loading",
+          "expected": "TAKE, JAPAN",
+          "extracted": "TAKE, JAPAN",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_discharge",
+          "expected": "BOWDEN, JAMAICA",
+          "extracted": "BOWDEN,JAMAICA",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "date_of_issue",
+          "expected": "12-FEB-2017",
+          "extracted": "12-FEB-2017",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "gross_weight",
+          "expected": "834 KG",
+          "extracted": "834 KG",
+          "matched": true,
+          "match_type": "fuzzy"
+        }
+      ]
+    },
+    {
+      "image_id": "IMG_OCR_6_T_BL_000009",
+      "label_file": "IMG_OCR_6_T_BL_000009.json",
+      "field_accuracy": 1.0,
+      "field_matched": 7,
+      "field_total": 7,
+      "text_metrics": {
+        "label_word_count": 101,
+        "ocr_word_count": 278,
+        "matched_word_count": 95,
+        "precision": 0.3417,
+        "recall": 0.9406,
+        "f1": 0.5013
+      },
+      "fields": [
+        {
+          "field": "bl_no",
+          "expected": "HG782409",
+          "extracted": "HG782409",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "shipper",
+          "expected": "FONGWON MACHINERY CO., LTD.",
+          "extracted": "FONGWON MACHINERY CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "consignee",
+          "expected": "M&M CONSULTING CO., LTD.",
+          "extracted": "M&M CONSULTING CO., LTD.",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_loading",
+          "expected": "ON, SWEDEN",
+          "extracted": "ON, SWEDEN",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_discharge",
+          "expected": "ARATU, BRAZIL",
+          "extracted": "ARATU, BRAZIL",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "date_of_issue",
+          "expected": "2004-03-23",
+          "extracted": "2004-03-23",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "gross_weight",
+          "expected": "144 KG",
+          "extracted": "144 KG",
+          "matched": true,
+          "match_type": "fuzzy"
+        }
+      ]
+    },
+    {
+      "image_id": "IMG_OCR_6_T_BL_000010",
+      "label_file": "IMG_OCR_6_T_BL_000010.json",
+      "field_accuracy": 1.0,
+      "field_matched": 7,
+      "field_total": 7,
+      "text_metrics": {
+        "label_word_count": 119,
+        "ocr_word_count": 367,
+        "matched_word_count": 117,
+        "precision": 0.3188,
+        "recall": 0.9832,
+        "f1": 0.4815
+      },
+      "fields": [
+        {
+          "field": "bl_no",
+          "expected": "HG194138",
+          "extracted": "HG194138",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "shipper",
+          "expected": "DARNES & NOBLE",
+          "extracted": "DARNES & NOBLE",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "consignee",
+          "expected": "9021457 HAI CHAU DIST. DANANG, ISRAEL",
+          "extracted": "9021457 HAI CHAU DIST, DANANG, ISRAEL",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_loading",
+          "expected": "ISHIKARI, JAPAN",
+          "extracted": "ISHIKARI, JAPAN",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_discharge",
+          "expected": "TANGSHAN, CHINA",
+          "extracted": "TANGSHAN, CHINA",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "date_of_issue",
+          "expected": "MAR 25, 2020",
+          "extracted": "MAR 25, 2020",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "gross_weight",
+          "expected": "98 KG",
+          "extracted": "98 KG",
+          "matched": true,
+          "match_type": "fuzzy"
+        }
+      ]
+    },
+    {
+      "image_id": "IMG_OCR_6_T_BL_000011",
+      "label_file": "IMG_OCR_6_T_BL_000011.json",
+      "field_accuracy": 1.0,
+      "field_matched": 7,
+      "field_total": 7,
+      "text_metrics": {
+        "label_word_count": 109,
+        "ocr_word_count": 358,
+        "matched_word_count": 107,
+        "precision": 0.2989,
+        "recall": 0.9817,
+        "f1": 0.4582
+      },
+      "fields": [
+        {
+          "field": "bl_no",
+          "expected": "HG092521",
+          "extracted": "HG092521",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "shipper",
+          "expected": "ETLAS MEDSTAFF",
+          "extracted": "ETLAS MEDSTAFF",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "consignee",
+          "expected": "JAPAN",
+          "extracted": "JAPAN",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_loading",
+          "expected": "JUCARO, CUBA",
+          "extracted": "JUCARO, CUBA",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "port_of_discharge",
+          "expected": "AUGUSTA, ITALY",
+          "extracted": "AUGUSTA, ITALY",
+          "matched": true,
+          "match_type": "fuzzy"
+        },
+        {
+          "field": "date_of_issue",
+          "expected": "APR 05, 2009",
+          "extracted": "APR 05. 2009",
+          "matched": true,
+          "match_type": "exact"
+        },
+        {
+          "field": "gross_weight",
+          "expected": "45 KG",
+          "extracted": "45 KG",
+          "matched": true,
+          "match_type": "fuzzy"
+        }
+      ]
+    }
+  ]
+}

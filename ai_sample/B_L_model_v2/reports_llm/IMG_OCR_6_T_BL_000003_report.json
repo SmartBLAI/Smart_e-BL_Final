@@ -1,0 +1,126 @@
+{
+  "generated_at": "2026-06-04T20:36:34.611890",
+  "lc_no": "LC-2022-SAMPLE-001",
+  "is_valid": false,
+  "pipeline": "Rule-based + Llama3 sLLM",
+  "summary": {
+    "defect_count": 4,
+    "warning_count": 1,
+    "verdict": "하자 4건 발견"
+  },
+  "bl_fields": {
+    "bl_no": "HG059556",
+    "shipper": "TEL:+(99)(71)9891-6285 FAX:+(24)(76)4706-9871 SUALITY IN PROPANE CO., LTD. 866-611-3497 679 COOLIDGE ROAD LUMBERTON, OK 35953, UNITED STATES TEL:+(15)(61)0916-6285 FAX:+(45)(21)2831-0145 MOBILE TELESY",
+    "consignee": "HG059556 SUALITY IN PROPANE CO., LTD. 866-611-3497 336-11 COREA ST ROBINVALE, VIC 1353, AUSTRALIA TEL:+(93)(10)8035-4804 MOBILE TELESYSTEMS CO., LTD. FAX:+(69)(45)7632-9242",
+    "notify_party": "HATEWAY GENOMICS CO., LTD. NO. 327, SHIBU STREET, ZUNYI CITY, SHANXI, CHINA 910627 CY/CFS TEL:+(94)(25)3861-9249 FAX:+(48)(13)5433-4611",
+    "vessel": "ALDEBARAN J",
+    "voyage_no": null,
+    "port_of_loading": "DLSU6474690 50 PKG SWITCH ASSY-INDICATOR COVER,LH 762KG 399.82 CBM R577189 60 PKG CYLINDER BLOCK, 887KG 808.02 CBM HYDRAULIC ELECTRIC-PUMP 43 PKG GASKET-OIL LEVEL PLUG 637KG 446.74 CBM",
+    "port_of_discharge": "DLSU6474690 50 PKG SWITCH ASSY-INDICATOR COVER,LH 762KG 399.82 CBM 60 PKG CYLINDER BLOCK, 887KG 808.02 CBM 43 PKG GASKET-OIL LEVEL PLUG 637KG 446.74 CBM",
+    "description_of_goods": "TOTAL 710KG 934.41 CBM SAY 14 BUNDLES ONLY TWO PCS ONLY CPT $9,667.50 2017-02-12 KARWAR, INDIA LOHNSON CONTROLS CO., LTD. TWO (2) CHIEF",
+    "gross_weight": "710 KG",
+    "measurement": "934.41 CBM",
+    "date_of_issue": "2014-09-15",
+    "place_of_issue": "KARWAR, INDIA LOHNSON CONTROLS CO., LTD. TWO (2) CHIEF 2014-09-15",
+    "on_board_date": null,
+    "total_freight": "$9,667.50"
+  },
+  "lc_conditions": {
+    "lc_no": "LC-2022-SAMPLE-001",
+    "expiry_date": "12-31-2022",
+    "latest_shipment_date": "12-15-2022",
+    "port_of_loading": "BUSAN",
+    "port_of_discharge": "HAMBURG",
+    "consignee": "PW JONES COMPANY",
+    "description_of_goods": "POWER CONVERTER, PAINTS, PRINTING INKS",
+    "max_gross_weight_kg": 100000.0,
+    "max_measurement_cbm": 2000.0
+  },
+  "validation": {
+    "is_valid": false,
+    "defect_count": 4,
+    "warning_count": 1,
+    "defects": [
+      {
+        "code": "D005",
+        "field": "consignee",
+        "description": "Consignee가 L/C 지정과 불일치합니다",
+        "bl_value": "HG059556 SUALITY IN PROPANE CO., LTD. 866-611-3497 336-11 COREA ST ROBINVALE, VIC 1353, AUSTRALIA TEL:+(93)(10)8035-4804 MOBILE TELESYSTEMS CO., LTD. FAX:+(69)(45)7632-9242",
+        "lc_value": "PW JONES COMPANY",
+        "severity": "ERROR"
+      },
+      {
+        "code": "D003",
+        "field": "port_of_loading",
+        "description": "선적항이 L/C 지정 항구와 불일치합니다",
+        "bl_value": "DLSU6474690 50 PKG SWITCH ASSY-INDICATOR COVER,LH 762KG 399.82 CBM R577189 60 PKG CYLINDER BLOCK, 887KG 808.02 CBM HYDRAULIC ELECTRIC-PUMP 43 PKG GASKET-OIL LEVEL PLUG 637KG 446.74 CBM",
+        "lc_value": "BUSAN",
+        "severity": "ERROR"
+      },
+      {
+        "code": "D004",
+        "field": "port_of_discharge",
+        "description": "양하항이 L/C 지정 항구와 불일치합니다",
+        "bl_value": "DLSU6474690 50 PKG SWITCH ASSY-INDICATOR COVER,LH 762KG 399.82 CBM 60 PKG CYLINDER BLOCK, 887KG 808.02 CBM 43 PKG GASKET-OIL LEVEL PLUG 637KG 446.74 CBM",
+        "lc_value": "HAMBURG",
+        "severity": "ERROR"
+      },
+      {
+        "code": "D006",
+        "field": "description_of_goods",
+        "description": "화물 명세에 다음 키워드가 없습니다: POWER CONVERTER, PAINTS, PRINTING INKS",
+        "bl_value": "TOTAL 710KG 934.41 CBM SAY 14 BUNDLES ONLY TWO PCS ONLY CPT $9,667.50 2017-02-12 KARWAR, INDIA LOHNS",
+        "lc_value": "POWER CONVERTER, PAINTS, PRINTING INKS",
+        "severity": "ERROR"
+      },
+      {
+        "code": "LLM-001",
+        "field": "port_of_discharge",
+        "description": "[LLM] Port name variation may not be significant in this context, but should be verified for future shipments",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "WARNING"
+      }
+    ]
+  },
+  "llm_analysis": {
+    "overall_verdict": "DISCREPANT",
+    "confidence": 0.8,
+    "rule_reviews": [
+      {
+        "code": "D005",
+        "confirmed": true,
+        "reasoning": "Consignee name contains additional information not present in L/C specification"
+      },
+      {
+        "code": "D003",
+        "confirmed": true,
+        "reasoning": "Port of loading matches L/C specification"
+      },
+      {
+        "code": "D004",
+        "confirmed": true,
+        "reasoning": "Port of discharge does not match L/C specification, but is a valid port in the shipment's origin country"
+      },
+      {
+        "code": "D006",
+        "confirmed": true,
+        "reasoning": "Description of goods matches L/C specification"
+      }
+    ],
+    "additional_findings": [
+      {
+        "field": "port_of_discharge",
+        "code": "LLM-001",
+        "description": "Port name variation may not be significant in this context, but should be verified for future shipments",
+        "severity": "WARNING",
+        "reasoning": "The port of discharge is a valid port in the shipment's origin country, but its name does not match the L/C specification. This discrepancy may not have significant implications for this particular shipment"
+      }
+    ],
+    "contextual_summary": "While some discrepancies were found, they do not appear to be critical or material. Further verification and review are recommended to ensure compliance with L/C conditions"
+  },
+  "llm_merge_stats": {
+    "demoted_to_warning": 0,
+    "llm_added_issues": 1
+  }
+}

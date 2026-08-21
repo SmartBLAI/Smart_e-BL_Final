@@ -1,0 +1,117 @@
+{
+  "generated_at": "2026-06-04T21:42:31.004636",
+  "lc_no": "LC-2022-006",
+  "is_valid": false,
+  "pipeline": "Rule-based + Llama3 sLLM",
+  "summary": {
+    "defect_count": 2,
+    "warning_count": 2,
+    "verdict": "하자 2건 발견"
+  },
+  "bl_fields": {
+    "bl_no": "HG441214",
+    "shipper": "GONG YOUNG MACHINERY CO., LTD.",
+    "consignee": "JARBOR COMPLIANCE CO., LTD.",
+    "notify_party": "KENRI BAKERY DELI CO., LTD.",
+    "vessel": "TIANRONG",
+    "voyage_no": "V.318",
+    "port_of_loading": "TROMSOE, NORWAY",
+    "port_of_discharge": "OSAKA, JAPAN",
+    "description_of_goods": "SUTURES AND COVERINGS / CABLE ASSEMBLY, SPECIAL PURPOSE / ELECTRICAL. W5273201 / SHOCK ABSORBER, DIRECT OPERATED",
+    "gross_weight": "290 KG",
+    "measurement": "267.85 CBM",
+    "date_of_issue": "2020-01-10",
+    "place_of_issue": "GISKE, NORWAY FOUR",
+    "on_board_date": "2019-06-30",
+    "total_freight": "$7,417.72"
+  },
+  "lc_conditions": {
+    "lc_no": "LC-2022-006",
+    "expiry_date": "2020-12-31",
+    "latest_shipment_date": "2020-06-30",
+    "port_of_loading": null,
+    "port_of_discharge": null,
+    "consignee": "JARBOR COMPLIANCE CO., LTD.",
+    "description_of_goods": "MEDICAL SUTURES, SURGICAL COVERINGS, STERILE SUPPLIES",
+    "max_gross_weight_kg": 1500.0,
+    "max_measurement_cbm": 1000.0
+  },
+  "validation": {
+    "is_valid": false,
+    "defect_count": 2,
+    "warning_count": 2,
+    "defects": [
+      {
+        "code": "D006",
+        "field": "description_of_goods",
+        "description": "화물 명세에 다음 키워드가 없습니다: MEDICAL SUTURES, SURGICAL COVERINGS, STERILE SUPPLIES",
+        "bl_value": "SUTURES AND COVERINGS / CABLE ASSEMBLY, SPECIAL PURPOSE / ELECTRICAL. W5273201 / SHOCK ABSORBER, DIR",
+        "lc_value": "MEDICAL SUTURES, SURGICAL COVERINGS, STERILE SUPPLIES",
+        "severity": "ERROR"
+      },
+      {
+        "code": "LLM-002",
+        "field": "description_of_goods",
+        "description": "[LLM] Cargo description semantic mismatch: SUTURES AND COVERINGS / CABLE ASSEMBLY, SPECIAL PURPOSE / ELECTRICAL. W5273201 / SHOCK ABSORBER, DIRECT OPERATED vs. MEDICAL SUTURES, SURGICAL COVERINGS, STERILE SUPPLIES",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "ERROR"
+      },
+      {
+        "code": "LLM-001",
+        "field": "port_of_discharge",
+        "description": "[LLM] Port name variation: OSAKA (B/L) vs. OSAKA (L/C)",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "WARNING"
+      },
+      {
+        "code": "LLM-003",
+        "field": "date_of_issue",
+        "description": "[LLM] Date logic inconsistency: 2020-01-10 (B/L) vs. 2020-06-30 (L/C)",
+        "bl_value": null,
+        "lc_value": null,
+        "severity": "WARNING"
+      }
+    ]
+  },
+  "llm_analysis": {
+    "overall_verdict": "DISCREPANT",
+    "confidence": 0.8,
+    "rule_reviews": [
+      {
+        "code": "D006",
+        "confirmed": true,
+        "reasoning": "The rule is too restrictive and does not account for variations in goods description. The discrepancy may be due to a misunderstanding of the L/C conditions."
+      }
+    ],
+    "additional_findings": [
+      {
+        "field": "port_of_discharge",
+        "code": "LLM-001",
+        "description": "Port name variation: OSAKA (B/L) vs. OSAKA (L/C)",
+        "severity": "WARNING",
+        "reasoning": "The port of discharge on the B/L is 'OSAKA, JAPAN', while the L/C conditions specify 'Not specified'. This discrepancy may indicate a typographical error or a misunderstanding of the L/C conditions."
+      },
+      {
+        "field": "description_of_goods",
+        "code": "LLM-002",
+        "description": "Cargo description semantic mismatch: SUTURES AND COVERINGS / CABLE ASSEMBLY, SPECIAL PURPOSE / ELECTRICAL. W5273201 / SHOCK ABSORBER, DIRECT OPERATED vs. MEDICAL SUTURES, SURGICAL COVERINGS, STERILE SUPPLIES",
+        "severity": "ERROR",
+        "reasoning": "The description of goods on the B/L does not match the L/C conditions. This discrepancy may indicate a misunderstanding or miscommunication between the shipper and the buyer."
+      },
+      {
+        "field": "date_of_issue",
+        "code": "LLM-003",
+        "description": "Date logic inconsistency: 2020-01-10 (B/L) vs. 2020-06-30 (L/C)",
+        "severity": "WARNING",
+        "reasoning": "The date of issue on the B/L is earlier than the latest shipment date specified in the L/C conditions. This discrepancy may indicate a misunderstanding or miscommunication between the shipper and the buyer."
+      }
+    ],
+    "contextual_summary": "The B/L contains discrepancies that are not caught by rule-based review, including port name variations, cargo description semantic mismatches, and date logic inconsistencies. These discrepancies suggest a need for further investigation and clarification between the shipper and the buyer."
+  },
+  "llm_merge_stats": {
+    "demoted_to_warning": 0,
+    "llm_added_issues": 3
+  }
+}
