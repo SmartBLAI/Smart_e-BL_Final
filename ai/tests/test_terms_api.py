@@ -89,7 +89,8 @@ class TestNormalize:
 
 class TestNormalizeApply:
     def test_왕복은_수치와_상호_본체를_보존한다(self, client):
-        bl = {"gross_weight": "1,234.50 KGS", "shipper": "GAE WOON  CO.,LTD"}
+        # std-2026.3: KGS 는 실무 표기라 제안이 없다 — 비표준 KILOS 로 제안을 만든다.
+        bl = {"gross_weight": "1,234.50 KILOS", "shipper": "GAE WOON  CO.,LTD"}
         suggestions = _normalize(client, bl=bl)["suggestions"]
 
         applied = client.post(
@@ -104,8 +105,8 @@ class TestNormalizeApply:
         ).json()
 
         fields = applied["documents"][0]["fields"]
-        assert fields["gross_weight"] == "1,234.50 KGM"  # 수치는 그대로.
-        assert fields["shipper"] == "GAE WOON  Co., Ltd."  # "GAE WOON" 본체 보존.
+        assert fields["gross_weight"] == "1,234.50 KGS"  # 수치는 그대로, 인쇄 서류 관행 표기로.
+        assert fields["shipper"] == "GAE WOON  CO., LTD."  # 본체 보존, 대문자 원문은 대문자로.
         assert len(applied["corrections"]) == len(suggestions)
         assert all(c["decision"] == "accepted" for c in applied["corrections"])
 
@@ -129,7 +130,7 @@ class TestNormalizeApply:
         assert response.status_code == 400
 
     def test_제안이_일부만_변조되면_200이고_그_건만_unapplied다(self, client):
-        bl = {"port_of_loading": "부산", "gross_weight": "1,234.50 KGS"}
+        bl = {"port_of_loading": "부산", "gross_weight": "1,234.50 KILOS"}
         suggestions = _normalize(client, bl=bl)["suggestions"]
         assert len(suggestions) >= 2
         tampered_id = suggestions[0]["suggestion_id"]
@@ -175,8 +176,8 @@ class TestNormalizeApply:
         ).json()
 
         by_doc_id = {d["doc_id"]: d["fields"] for d in applied["documents"]}
-        assert by_doc_id["A"]["shipper"] == "GAE WOON Co., Ltd."
-        assert by_doc_id["B"]["notify_party"] == "GAE WOON Co., Ltd."
+        assert by_doc_id["A"]["shipper"] == "GAE WOON CO., LTD."
+        assert by_doc_id["B"]["notify_party"] == "GAE WOON CO., LTD."
 
     def test_적용_대상_서류가_없으면_unapplied_사유를_남긴다(self, client):
         bl = {"port_of_loading": "부산"}

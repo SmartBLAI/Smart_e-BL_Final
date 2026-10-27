@@ -11,7 +11,13 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
+
+# Docker 이미지는 OCR_WARMUP=1 로 기동 시 OCR 엔진을 미리 올린다. 테스트에서
+# TestClient 가 lifespan 을 돌리면 이미 XGBoost 를 불러온 프로세스에서 Paddle 을
+# 초기화하게 돼 세그폴트가 난다(CI exit 139). 테스트는 OCR 을 쓰지 않으므로 끈다.
+os.environ["OCR_WARMUP"] = "0"
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
