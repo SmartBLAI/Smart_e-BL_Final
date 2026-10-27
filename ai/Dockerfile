@@ -1,8 +1,9 @@
 FROM python:3.12-slim
 
-# opencv/paddleocr가 필요로 하는 시스템 라이브러리 (libGL 등) + F4 PDF 리포트 한글 폰트(임베드용)
+# opencv/paddleocr가 필요로 하는 시스템 라이브러리 (libGL, OpenMP=libgomp1) + F4 PDF 리포트 한글 폰트(임베드용)
+# libgomp1 이 없으면 Paddle 이 "libgomp.so.1: cannot open shared object file" 로 OCR 엔진을 못 올린다(x86 EC2 에서 확인).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1 libglib2.0-0 fonts-nanum \
+    libgl1 libglib2.0-0 libgomp1 fonts-nanum \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
