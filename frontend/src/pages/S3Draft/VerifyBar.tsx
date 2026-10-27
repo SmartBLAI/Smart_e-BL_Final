@@ -6,7 +6,6 @@ import type { DefectPrediction, DocumentMeta, FieldValue, Verdict } from '../../
 import {
   SEVERITIES_IN_ORDER,
   countRequiredFields,
-  isEditedField,
   summarizeVerdicts,
   worstSeverity,
   type ConfirmedFields,
@@ -15,7 +14,8 @@ import { verifyShipment } from '../../api/verify';
 import { loadLcParse } from '../../api/lc';
 import { saveVerification } from '../../api/shipment';
 import { ApiError } from '../../api/client';
-import { useRecordVerification, useSaveFields } from '../../shared/shipmentStore';
+import { isDemoFixtures, useRealityActions, useRecordVerification } from '../../shared/shipmentStore';
+import { runRealityCheckSoftly } from '../../shared/realityView';
 
 interface VerifyBarProps {
   /** 이 선적 id — 검증 성공 후 이동할 S4 경로에 씁니다 */
@@ -31,8 +31,6 @@ interface VerifyBarProps {
   verdicts: Verdict[];
   /** 이 선적의 하자 확률. 아직 검증 전이면 null이라 요약을 못 그립니다 */
   prediction: DefectPrediction | null;
-  /** FieldForm·SuggestionCard와 공유하는 "필드별 수정값" */
-  editedValues: Record<string, string | null>;
   /** 값은 안 고치고 "확인"만 표시한 필드 — 필수 확인 건수 집계에 씀 */
   confirmedFields: ConfirmedFields;
 }
@@ -56,12 +54,11 @@ export function VerifyBar({
   documents,
   verdicts,
   prediction,
-  editedValues,
   confirmedFields,
 }: VerifyBarProps) {
   const navigate = useNavigate();
   const recordVerification = useRecordVerification();
-  const saveFields = useSaveFields();
+  const { runRealityCheck } = useRealityActions();
   const [showOverrideForm, setShowOverrideForm] = useState(false);
   const [overrideReason, setOverrideReason] = useState('');
   const [overrideRecorded, setOverrideRecorded] = useState<string | null>(null);
@@ -76,35 +73,13 @@ export function VerifyBar({
   async function handleVerifyClick(overrideReasonToSave: string | null = null): Promise<boolean> {
     setVerifyStatus('loading');
     setVerifyError(null);
-    // 화면에 보이는 값(직접 수정·제안 승인 반영)을 그대로 검증에 보냅니다 —
-    // 아직 화면에 안 반영된 원본 값을 검증하면 사용자가 방금 고친 값과
-    // 다른 결과를 보게 됩니다.
-    const effectiveFields = fields.map((field) =>
-      isEditedField(field, editedValues)
-        ? { ...field, value: editedValues[field.field_name] }
-        : field,
-    );
+    // 고친 값은 편집 즉시 저장·스토어 반영되므로 fields가 이미 최신입니다.
+    const effectiveFields = fields;
     try {
-      // F2 교정 승인·직접 수정값은 지금까지 컴포넌트 state(editedValues)에만
-      // 있었습니다 — 검증 실행 직전에 게이트웨이로 한 번 저장해서, S4·S7이
-      // 다시 읽는 data.fields에도 이 값이 반영되게 합니다. B/L 서류를 못
-      // 찾으면(업로드 전 등) 근거 문서 없이 저장할 수 없어 건너뜁니다.
-      // ponytail: 승인 후 검증 없이 다른 화면으로 갔다 오면 편집값이 소실됩니다
-      // — 입력마다 디바운스 자동저장을 붙이면 해결되지만 지금은 범위 밖입니다.
-      const blDocument = documents.find((doc) => doc.kind === 'BL');
-      if (blDocument) {
-        const page = effectiveFields.find((f) => f.page !== null)?.page ?? 1;
-        // 원본 fields(값 병합 전)로 판정해야 isEditedField가 맞게 동작합니다 —
-        // effectiveFields는 이미 값이 병합돼 있어 "달라졌는지"를 못 봅니다.
-        const editedFieldNames = new Set(
-          fields.filter((field) => isEditedField(field, editedValues)).map((field) => field.field_name),
-        );
-        await saveFields(shipmentId, blDocument.document_id, page, effectiveFields, editedFieldNames);
-      }
       // L/C 를 못 읽어도 검증은 진행합니다 — 여기서 멈추면 신용장 파싱
       // 실패 하나로 검증 자체를 못 하게 됩니다.
       const parsed = await loadLcParse(shipmentId, documents).catch(() => null);
-      const result = await verifyShipment(effectiveFields, { lc: parsed?.lc });
+      const result = await verifyShipment(effectiveFields, { lc: parsed?.lc, shipmentId });
       // aiService가 방금 계산한 결과를 게이트웨이에 저장 — 이게 없으면
       // 새로고침했을 때 판정이 사라지고 선적 상태도 계속 DRAFT로 남습니다.
       const status = await saveVerification(
@@ -114,6 +89,9 @@ export function VerifyBar({
         overrideReasonToSave,
       );
       recordVerification(shipmentId, status, result.verdicts, result.prediction);
+      // 현실 대조(F6)도 이어서 돌려 S5·S6를 채웁니다 — 기다리지 않고(S4 이동을 안 막음),
+      // 실패해도 검증은 성공 그대로입니다(S5가 어댑터 상태를 보여줌). 데모 모드는 건너뜁니다.
+      if (!isDemoFixtures()) void runRealityCheckSoftly(() => runRealityCheck(shipmentId));
       navigate(`/shipments/${shipmentId}/verdicts`);
       return true;
     } catch (err) {
@@ -123,7 +101,7 @@ export function VerifyBar({
     }
   }
 
-  const requiredCount = countRequiredFields(fields, editedValues, confirmedFields);
+  const requiredCount = countRequiredFields(fields, {}, confirmedFields);
   const verdictCounts = summarizeVerdicts(verdicts);
 
   // 미해결 Critical만 셉니다. 판정 보류는 필수 확인 필드 쪽에서 이미 세고 있는

@@ -66,6 +66,19 @@ describe('countRequiredFields', () => {
     const fields = [field({ field_name: 'a', confidence: 0.95, conflict_flag: true })];
     expect(countRequiredFields(fields)).toBe(1);
   });
+
+  it('"값 확인함"으로 확인한 필드는 건수에서 빠짐 (대시보드 카드·S3 공통)', () => {
+    const fields = [field({ field_name: 'a', confidence: 0.5 }), field({ field_name: 'b', confidence: 0.5 })];
+    expect(countRequiredFields(fields, {}, { a: true })).toBe(1);
+    expect(countRequiredFields(fields, {}, { a: true, b: true })).toBe(0);
+  });
+});
+
+describe('countRequiredFields 서버 grade', () => {
+  it('서버 CONFIRMED는 신뢰도가 낮아도 확인된 것으로 셈', () => {
+    const fields = [field({ field_name: 'a', confidence: 0.5, grade: 'CONFIRMED' }), field({ field_name: 'b', confidence: 0.5 })];
+    expect(countRequiredFields(fields)).toBe(1);
+  });
 });
 
 describe('summarizeVerdicts', () => {

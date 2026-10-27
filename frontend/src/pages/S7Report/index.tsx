@@ -13,6 +13,7 @@ import { summarizeVerdicts } from '../../shared/shipmentStats';
 import { useReport } from '../../api/useReport';
 import { downloadReportPdf } from '../../api/report';
 import { ApiError } from '../../api/client';
+import { OutcomeForm } from './OutcomeForm';
 
 /**
  * S7 선제 대응 리포트 — 축소 구현 (화면전이_정의.md §1 "이번 기간: 축소").
@@ -121,7 +122,7 @@ export function S7Report() {
     try {
       // 화면에 보이는 리포트와 같은 L/C 조건으로 PDF를 만듭니다 — 검증 때
       // 이미 받아둔 값(report.lc)을 재사용하고, 다시 파싱하지 않습니다.
-      await downloadReportPdf(fields, isLive ? report.lc?.lc : undefined);
+      await downloadReportPdf(fields, isLive ? report.lc?.lc : undefined, undefined, shipment.shipment_id);
       setPdfStatus('idle');
     } catch (err) {
       setPdfStatus('error');
@@ -145,7 +146,7 @@ export function S7Report() {
           marginBottom: 16,
         }}
       >
-        <h1 style={{ margin: 0 }}>선제 대응 리포트</h1>
+        <h1 className="page-title">선제 대응 리포트</h1>
         <button type="button" className="btn-secondary" onClick={handleExportPdf} disabled={pdfStatus === 'pending'}>
           {pdfStatus === 'pending' ? 'PDF 생성 중…' : 'PDF로 내보내기'}
         </button>
@@ -234,7 +235,7 @@ export function S7Report() {
 
         {/* 판정 목록 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          <h2 style={{ textAlign: 'left', margin: '8px 0 0' }}>판정 목록</h2>
+          <h2 className="section-title" style={{ marginBottom: 0 }}>판정 목록</h2>
           {sortedVerdicts.map((verdict) => (
             <VerdictCard
               key={verdict.verdict_id}
@@ -245,6 +246,8 @@ export function S7Report() {
         </div>
 
         <SkippedList skipped={unchecked} />
+
+        <OutcomeForm shipmentId={shipment.shipment_id} />
       </div>
     </PageContainer>
   );

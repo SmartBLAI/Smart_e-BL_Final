@@ -57,6 +57,7 @@ export function useVerify(
         const view = await verifyShipment(fields, {
           asOf,
           lc: parsed?.lc,
+          shipmentId,
           signal: controller.signal,
         });
         setState({ status: 'ok', view, lc: parsed });

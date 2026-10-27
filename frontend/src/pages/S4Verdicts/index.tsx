@@ -87,14 +87,29 @@ export function S4Verdicts() {
 
   return (
     <PageContainer narrow>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        {notice}
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Link to={`/shipments/${shipment.shipment_id}/report`} className="btn btn-primary">
-            리포트 생성
-          </Link>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+        {/* 다른 화면(S3·S5·S6·S7)처럼 제목 줄을 두고, 이동 버튼은 제목 오른쪽에 둡니다 */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 'var(--space-2)',
+            flexWrap: 'wrap',
+          }}
+        >
+          <h1 className="page-title">검증 결과</h1>
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <Link to={`/shipments/${shipment.shipment_id}`} className="btn btn-secondary">
+              운항 타임라인
+            </Link>
+            <Link to={`/shipments/${shipment.shipment_id}/report`} className="btn btn-primary">
+              리포트 생성
+            </Link>
+          </div>
         </div>
+
+        {notice}
 
         <VerdictSummary verdicts={verdicts} />
         {[...verdicts].sort(bySeverity).map((verdict) => (
@@ -102,6 +117,10 @@ export function S4Verdicts() {
             key={verdict.verdict_id}
             verdict={verdict}
             shipmentId={shipment.shipment_id}
+            // F7 — 백엔드 응답(verdict_id가 목데이터와 다를 수 있음)이든 목데이터든
+            // data.explanations에 없는 판정은 undefined → null로 정리해 넘깁니다.
+            explanation={data.explanations[verdict.verdict_id] ?? null}
+            realityEvents={data.realityEvents}
           />
         ))}
 

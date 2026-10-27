@@ -9,7 +9,7 @@
 
 import type {
   Shipment,
-  ShipmentDraft,
+  ShipmentStatus,
   DocumentMeta,
   FieldValue,
   Suggestion,
@@ -19,6 +19,10 @@ import type {
   ImpactResult,
   RealityEvent,
   Alert,
+  AdapterStatus,
+  VesselMatch,
+  RealityRuleStatus,
+  Explanation,
 } from '../types/domain';
 
 // ─────────────────────────────────────────────
@@ -74,14 +78,6 @@ export const mockShipmentSubmitted: Shipment = {
   updated_at: '2026-08-01T07:15:00Z',
   lc_expiry_date: '2026-08-15',
 };
-
-/** S1 대시보드 목록용 — 상태가 섞인 선적 4건 */
-export const mockShipments: Shipment[] = [
-  mockShipment,
-  mockShipmentDraft,
-  mockShipmentVerified,
-  mockShipmentSubmitted,
-];
 
 // ─────────────────────────────────────────────
 // 업로드 서류
@@ -338,10 +334,10 @@ export const mockVerdicts: Verdict[] = [
     target_fields: ['incoterms'],
     result: 'VIOLATION',
     severity: 'Info',
-    message: 'Incoterms 표기에 규칙 버전이 병기되지 않았습니다.',
-    action_hint: 'FOB Busan (Incoterms 2020) 형식으로 보완하는 것을 권장합니다.',
+    message: 'Incoterms 표기에 장소가 병기되어 신용장의 조건 코드(FOB)와 글자 그대로 일치하지 않습니다.',
+    action_hint: '거래조건은 조건 코드(FOB)만 기재하는 것을 권장합니다.',
     evidence: {
-      clause_text: 'Incoterms 2020 — 규칙명과 장소를 병기한다.',
+      clause_text: '인보이스·신용장 거래조건은 동등 비교한다(X010) — 신용장에는 조건 코드만 담긴다.',
     },
     judged_at: '2026-08-12T01:30:00Z',
     rule_version: 'RC-2026.08.1',
@@ -424,131 +420,541 @@ export const mockImpactResult: ImpactResult = {
 };
 
 // ─────────────────────────────────────────────
-// 조립된 초안 (S3 진입 시 로드되는 형태)
-// ─────────────────────────────────────────────
-
-export const mockDraft: ShipmentDraft = {
-  shipment: mockShipment,
-  documents: mockDocuments,
-  fields: mockFields,
-  suggestions: mockSuggestions,
-};
-
-// ─────────────────────────────────────────────
-// F6 현실 대조 이벤트 5건 — S5 타임라인 · S6 경보 센터용 (§5.6)
+// F6 현실 대조 이벤트 6건 — S5 타임라인 · S6 경보 센터용 (§5.6)
 //
-// 수출신고 수리 → 게이트 반입 → 본선적재 → 출항 → 도착 예정 순서의
-// 타임라인입니다. 전부 shipment_id는 mockShipment 것과 같습니다.
+// 2026-08-24 갱신: 세관(UNIPASS)·선사(DCSA) 이벤트를 전부 걷어내고,
+// 실제로 붙은 어댑터인 울산항만공사 "항만 내 선박 운항정보"(VTS) 기록으로
+// 교체했습니다. 근거 문서(f6-customs-reality-check.md)가 "하지 않은 검증을
+// 했다고 말하는 것"이라며 금지한 표기(세관 이벤트)였습니다.
 //
-// ⚠ 모순 사례(EVT-003): 서류(mockFields의 container_no)는 컨테이너
-//   1대(MSKU1234565)만 기재하는데, 실제 본선적재 이벤트는 quantity: 2로
-//   컨테이너가 2대 실린 것으로 기록되어 있습니다. F6이 잡아내야 하는
-//   서류·현실 불일치 사례입니다.
+// 항차 2026-087, 콜사인 DSOZ8(선명 M/V OSUNG HO V.112, mockVesselMatch 참고)
+// 기준 6건. 투묘 → 양묘 → 입항 → 접안 → 출항 → 미상 코드 순서입니다.
+//
+// ⚠ 모순 사례(EVT-005): 접안(EVT-004) 이후 이안(UNBERTH) 기록 없이
+//   출항(DEPARTURE)이 찍혀 있습니다. C-STAT-01(관제 시퀀스 이상)이 잡아내는
+//   사례입니다 — mockAlerts의 ALT-002.
+// ⚠ EVT-006은 모르는 관제 코드('12')입니다. 조용히 버리지 않고
+//   event_type: 'UNKNOWN' + raw_code로 원본을 남깁니다.
 // ─────────────────────────────────────────────
 
 export const mockRealityEvents: RealityEvent[] = [
   {
     event_id: 'EVT-001',
     shipment_id: mockShipment.shipment_id,
-    source: 'UNIPASS',
-    source_event_code: 'EXPORT-ACCEPT',
-    event_type: '수출신고 수리',
-    occurred_at: '2026-07-12T05:40:00Z',
-    recorded_at: '2026-07-12T05:41:00Z',
-    location: 'KRPUS',
+    source: 'ULSAN_VTS',
+    source_event_code: '7',
+    event_type: 'ANCHOR',
+    occurred_at: '2026-07-12T04:10:00Z',
+    recorded_at: '2026-07-12T04:12:00Z',
+    location: 'KRUSN',
     quantity: null,
     container_no: null,
     trust_grade: 'A',
     precision: 'DATETIME',
+    voyage_no: '2026-087',
+    facility: '정박지',
+    raw_code: null,
   },
   {
     event_id: 'EVT-002',
     shipment_id: mockShipment.shipment_id,
-    source: 'DCSA',
-    source_event_code: 'GTIN',
-    event_type: '컨테이너 게이트 반입',
-    occurred_at: '2026-07-13T14:20:00Z',
-    recorded_at: '2026-07-13T14:25:00Z',
-    location: 'KRPUS',
-    quantity: 1,
-    container_no: 'MSKU1234565',
+    source: 'ULSAN_VTS',
+    source_event_code: '8',
+    event_type: 'WEIGH_ANCHOR',
+    occurred_at: '2026-07-12T22:30:00Z',
+    recorded_at: '2026-07-12T22:32:00Z',
+    location: 'KRUSN',
+    quantity: null,
+    container_no: null,
     trust_grade: 'A',
     precision: 'DATETIME',
+    voyage_no: '2026-087',
+    facility: '정박지',
+    raw_code: null,
   },
-  // ⚠ 모순 사례 — quantity: 2가 서류상 컨테이너 1대(container_no 필드)와 다름
   {
     event_id: 'EVT-003',
     shipment_id: mockShipment.shipment_id,
-    source: 'DCSA',
-    source_event_code: 'LOAD',
-    event_type: '본선적재 (Loaded on Board)',
-    occurred_at: '2026-07-14T08:15:00Z',
-    recorded_at: '2026-07-14T09:00:00Z',
-    location: 'KRPUS',
-    quantity: 2,
-    container_no: 'MSKU1234565',
+    source: 'ULSAN_VTS',
+    source_event_code: '3',
+    event_type: 'ARRIVAL',
+    occurred_at: '2026-07-13T01:05:00Z',
+    recorded_at: '2026-07-13T01:07:00Z',
+    location: 'KRUSN',
+    quantity: null,
+    container_no: null,
     trust_grade: 'A',
     precision: 'DATETIME',
+    voyage_no: '2026-087',
+    facility: null,
+    raw_code: null,
   },
   {
     event_id: 'EVT-004',
     shipment_id: mockShipment.shipment_id,
-    source: 'DCSA',
-    source_event_code: 'DEPA',
-    event_type: '선박 출항 (Vessel Departure)',
-    occurred_at: '2026-07-15T22:00:00Z',
-    recorded_at: '2026-07-15T22:10:00Z',
-    location: 'KRPUS',
+    source: 'ULSAN_VTS',
+    source_event_code: '4',
+    event_type: 'BERTH',
+    occurred_at: '2026-07-13T06:40:00Z',
+    recorded_at: '2026-07-13T06:42:00Z',
+    location: 'KRUSN',
     quantity: null,
     container_no: null,
     trust_grade: 'A',
     precision: 'DATETIME',
+    voyage_no: '2026-087',
+    facility: '계류시설',
+    raw_code: null,
   },
-  // 아직 일어나지 않은 예측 이벤트라 trust_grade가 A보다 낮고, 날짜만 의미가 있습니다
+  // ⚠ 이안(UNBERTH) 없이 출항 — C-STAT-01 관제 시퀀스 이상 (ALT-002 근거)
   {
     event_id: 'EVT-005',
     shipment_id: mockShipment.shipment_id,
-    source: 'DCSA',
-    source_event_code: 'ARRI',
-    event_type: '도착 예정 (Estimated Arrival)',
-    occurred_at: '2026-08-20T00:00:00Z',
-    recorded_at: '2026-08-13T03:00:00Z',
-    location: 'DEHAM',
+    source: 'ULSAN_VTS',
+    source_event_code: '9',
+    event_type: 'DEPARTURE',
+    occurred_at: '2026-07-13T14:00:00Z',
+    recorded_at: '2026-07-13T14:02:00Z',
+    location: 'KRUSN',
     quantity: null,
     container_no: null,
-    trust_grade: 'B',
-    precision: 'DATE',
+    trust_grade: 'A',
+    precision: 'DATETIME',
+    voyage_no: '2026-087',
+    facility: null,
+    raw_code: null,
+  },
+  // ⚠ 모르는 관제 코드 — 버리지 않고 UNKNOWN + raw_code로 원본 보존
+  {
+    event_id: 'EVT-006',
+    shipment_id: mockShipment.shipment_id,
+    source: 'ULSAN_VTS',
+    source_event_code: '12',
+    event_type: 'UNKNOWN',
+    occurred_at: '2026-07-13T14:05:00Z',
+    recorded_at: '2026-07-13T14:07:00Z',
+    location: 'KRUSN',
+    quantity: null,
+    container_no: null,
+    trust_grade: 'A',
+    precision: 'DATETIME',
+    voyage_no: '2026-087',
+    facility: null,
+    raw_code: '12',
   },
 ];
 
 // ─────────────────────────────────────────────
-// F6 모순 경보 2건 — S6 경보 센터용. mockRealityEvents와 연결됨 (§5.6)
+// F6 모순 경보 3건 — S6 경보 센터용. mockRealityEvents와 연결됨 (§5.6)
+//
+// 2026-08-24 갱신: 기존 수량 불일치 경보(컨테이너 대수)는 삭제했습니다.
+// VTS 관제 기록에는 수량 필드가 없어 근거가 없습니다(C-QTY-01은
+// mockRealityRules에서 NOT_EVALUABLE로 분류됨). 대신 이 데이터로 실제
+// 성립하는 경보 3건(C-TIME-02·C-STAT-01·C-ROUTE-01)으로 교체했습니다.
+//
+// ⚠ document_event_ids는 spec 원안의 'on_board_date'·'vessel' 대신 실제
+//   mockFields.field_name인 'shipped_on_board_date'·'vessel_voyage'를
+//   씁니다 — 원안 그대로 두면 AlertCard가 "필드를 찾지 못했습니다"로
+//   빠져 서류측 근거가 안 붙습니다.
 // ─────────────────────────────────────────────
 
 export const mockAlerts: Alert[] = [
+  // C-TIME-02 — 서류상 본선적재일이 실제 출항보다 늦음
   {
     alert_id: 'ALT-001',
     shipment_id: mockShipment.shipment_id,
     severity: 'Critical',
     message:
-      '실제 본선적재 컨테이너가 2대인데 서류에는 1대(MSKU1234565)만 기재되어 있습니다.',
+      '서류의 본선적재일(2026-07-14)이 울산항 실제 출항 시각(2026-07-13 23:00 KST)보다 늦습니다. 배가 떠난 뒤에 실은 것으로 기재되어 있습니다.',
     bl_no: mockShipment.bl_no ?? '',
-    document_event_ids: ['container_no'],
-    // 게이트 반입(1대 확인) + 본선적재(2대 기록) — 둘을 같이 봐야 불일치가 보임
-    reality_event_ids: ['EVT-002', 'EVT-003'],
+    document_event_ids: ['shipped_on_board_date'],
+    reality_event_ids: ['EVT-005'],
     acknowledged: false,
-    created_at: '2026-07-14T09:05:00Z',
+    created_at: '2026-07-13T14:10:00Z',
   },
+  // C-STAT-01 — 관제 시퀀스 이상 (접안 후 이안 없이 출항)
   {
     alert_id: 'ALT-002',
     shipment_id: mockShipment.shipment_id,
+    severity: 'Info',
+    message:
+      '접안(07-13 15:40) 이후 이안 기록 없이 출항(07-13 23:00)이 기록되었습니다. 관제 기록 누락일 수 있습니다.',
+    bl_no: mockShipment.bl_no ?? '',
+    document_event_ids: ['vessel_voyage'],
+    reality_event_ids: ['EVT-004', 'EVT-005'],
+    acknowledged: false,
+    created_at: '2026-07-13T14:10:00Z',
+  },
+  // C-ROUTE-01 — 선적항 불일치
+  {
+    alert_id: 'ALT-003',
+    shipment_id: mockShipment.shipment_id,
     severity: 'Warning',
-    message: 'SI의 선적항 기재(INCHEON)가 실제 수출신고·본선적재 위치(BUSAN)와 다릅니다.',
+    message: 'B/L 선적항 기재(INCHEON)가 실제 관제 기록이 있는 울산항(KRUSN)과 다릅니다.',
     bl_no: mockShipment.bl_no ?? '',
     document_event_ids: ['port_of_loading'],
-    reality_event_ids: ['EVT-001', 'EVT-003'],
+    reality_event_ids: ['EVT-003'],
     // 이미 mockFields에서 conflict_flag로 알려진 충돌이라, 담당자가 인지는 하고 있는 상태로 설정
     acknowledged: true,
-    created_at: '2026-07-14T09:10:00Z',
+    created_at: '2026-07-13T01:10:00Z',
   },
 ];
+
+// ─────────────────────────────────────────────
+// F6 신규 mock — 어댑터 상태 · 선명 해소 · 룰 커버리지 (§2 / §3.2 / §5.6)
+// ─────────────────────────────────────────────
+
+/** 울산항 VTS 어댑터 연결 상태 — S5 타임라인 상단 배너용 */
+export const mockAdapterStatus: AdapterStatus = {
+  name: 'ULSAN_VTS',
+  connected: true,
+  last_synced_at: '2026-07-14T04:00:00Z',
+  consecutive_failures: 0,
+  coverage_note:
+    '울산항 안에서의 선박 이동만 관제됩니다. 양륙항이 울산이 아니면 그 항의 기록은 존재하지 않습니다.',
+};
+
+/** 선명 → 콜사인 해소 결과 — mockShipment의 vessel_voyage에 대응 */
+export const mockVesselMatch: VesselMatch = {
+  bl_vessel: 'M/V OSUNG HO V.112',
+  normalized: 'OSUNG',
+  call_sign: 'DSOZ8',
+  method: 'NAME_FALLBACK',
+  candidates: [],
+};
+
+/**
+ * 모순 룰 11건의 실행 가능성 — S6 "판정 범위 공개" 구역용.
+ *
+ * 원안(기획 v2)에는 11건이 있었지만, 실제로 이 API(울산항 VTS + 해수부
+ * 선박제원)로 판정 가능한 건 6건(완전 3 · 부분 3)뿐입니다. 나머지 5건은
+ * 왜 못 하는지를 reason에 숨기지 않고 그대로 적습니다.
+ * 근거: docs/backend/ai-service/f6-customs-reality-check.md §2
+ */
+export const mockRealityRules: RealityRuleStatus[] = [
+  {
+    rule_id: 'C-TIME-01',
+    intent: '서류 이벤트가 물리 이벤트보다 이름 (본선적재일 < 실제 입항)',
+    coverage: 'IMPLEMENTED',
+    severity: 'Critical',
+    reason: '입항 실측 시각으로 판정합니다.',
+  },
+  {
+    rule_id: 'C-TIME-02',
+    intent: '서류 이벤트가 물리 이벤트보다 늦음 (본선적재일 > 실제 출항)',
+    coverage: 'IMPLEMENTED',
+    severity: 'Critical',
+    reason: '출항 실측 시각으로 판정합니다.',
+  },
+  {
+    rule_id: 'C-TIME-03',
+    intent: '세관 신고 순서 역전',
+    coverage: 'NOT_EVALUABLE',
+    severity: null,
+    reason: '세관 신고 이벤트를 받는 경로가 없습니다.',
+  },
+  {
+    rule_id: 'C-TIME-04',
+    intent: '예정 대비 실제 지연 이상',
+    coverage: 'PARTIAL',
+    severity: 'Warning',
+    reason: "이 API에는 '예정 vs 실제' 축이 없어 체류시간 분포 이탈만 봅니다.",
+  },
+  {
+    rule_id: 'C-QTY-01',
+    intent: '세관 신고 수량 ↔ 서류 수량',
+    coverage: 'NOT_EVALUABLE',
+    severity: null,
+    reason: '관제 기록에 수량 필드가 없습니다.',
+  },
+  {
+    rule_id: 'C-QTY-02',
+    intent: '분할 반출 누계 ↔ 서류 수량',
+    coverage: 'NOT_EVALUABLE',
+    severity: null,
+    reason: '동상 — 수량 필드가 없습니다.',
+  },
+  {
+    rule_id: 'C-REL-01',
+    intent: '원본회수·L/G ↔ 세관 반출',
+    coverage: 'NOT_EVALUABLE',
+    severity: null,
+    reason: '인도 이벤트도 세관 이벤트도 없습니다.',
+  },
+  {
+    rule_id: 'C-ROUTE-01',
+    intent: '양륙항·선적항 불일치',
+    coverage: 'PARTIAL',
+    severity: 'Critical',
+    reason: '울산이 선적항 또는 양륙항인 건만 판정합니다. 그 외는 판정하지 않음으로 남깁니다.',
+  },
+  {
+    rule_id: 'C-VSL-01',
+    intent: '선명·항차 불일치',
+    coverage: 'PARTIAL',
+    severity: 'Warning',
+    reason: '선명은 대조하지만 항차번호는 대조하지 못합니다 — 관제 연번은 선사 항차번호가 아닙니다.',
+  },
+  {
+    rule_id: 'C-STAT-01',
+    intent: '이벤트 상태 진행 순서 이상',
+    coverage: 'IMPLEMENTED',
+    severity: 'Info',
+    reason: '관제 시퀀스 문법으로 판정합니다.',
+  },
+  {
+    rule_id: 'C-ANOM-01',
+    intent: '이상탐지 모델',
+    coverage: 'NOT_EVALUABLE',
+    severity: null,
+    reason: '표본이 부족해 적용하지 않았습니다.',
+  },
+];
+
+// ─────────────────────────────────────────────
+// F5 신규 mock — 필드별 영향 맵 · 재발행 경로 · 겹치는 교정 제안 (§5.5)
+//
+// 축소 구현입니다. 실제 F5는 F2 캐스케이드의 제약 그래프를 역산하지만,
+// 목업에서는 어떤 필드를 고쳤을 때 무엇이 딸려오는지를 이 표로 흉내 냅니다.
+// 키는 사용자가 고친 필드 이름이고, 값은 그때 다시 확인해야 하는 항목들입니다.
+//
+// ⚠ 필드 키는 spec 원안의 'on_board_date'가 아니라 실제 mockFields.field_name인
+//   'shipped_on_board_date'를 씁니다 (아래 T1 보고 참고).
+// ─────────────────────────────────────────────
+
+export const mockImpactByField: Record<string, ImpactItem[]> = {
+  // 기존 mockImpactItems 3건을 그대로 재사용
+  port_of_loading: mockImpactItems,
+  shipped_on_board_date: [
+    {
+      affected_doc: 'DOC-002',
+      affected_field: 'shipped_on_board_date',
+      action: 'L/C 44C가 지정한 최종선적일과 값이 같은지 확인해야 합니다.',
+      party: '은행',
+      urgency: 'Critical',
+      requires_recheck: true,
+      rule_id: null,
+      constraint_type: 'EQ',
+      indirect: false,
+    },
+    {
+      affected_doc: 'DOC-003',
+      affected_field: 'shipped_on_board_date',
+      action: '상업송장 발행일이 본선적재일 이후인지 순서를 다시 확인해야 합니다.',
+      party: '포워더',
+      urgency: 'Warning',
+      requires_recheck: true,
+      rule_id: null,
+      // 원안은 COND(조건부 제약)지만 이번 기간 렌더 대상 3종(EQ·SUM·REF)에
+      // 맞춰 REF로 둡니다 (§10.1)
+      constraint_type: 'REF',
+      indirect: true,
+    },
+  ],
+  no_of_packages: [
+    {
+      affected_doc: 'DOC-004',
+      affected_field: 'no_of_packages',
+      action: '포장명세서의 포장 수량 합계가 값과 일치하는지 다시 확인해야 합니다.',
+      party: '화주',
+      urgency: 'Critical',
+      requires_recheck: true,
+      rule_id: 'R-XREF-QTY',
+      constraint_type: 'SUM',
+      indirect: false,
+    },
+    {
+      affected_doc: 'DOC-003',
+      affected_field: 'no_of_packages',
+      action: '상업송장 금액의 계산 근거(포장 수량)가 달라져 다시 계산해야 합니다.',
+      party: '화주',
+      urgency: 'Warning',
+      requires_recheck: true,
+      rule_id: null,
+      constraint_type: 'DERIVE',
+      indirect: true,
+    },
+  ],
+  description_of_goods: [
+    {
+      affected_doc: 'DOC-002',
+      affected_field: 'description_of_goods',
+      action: 'L/C 45A가 지정한 상품명세와 값이 같은지 확인해야 합니다.',
+      party: '은행',
+      urgency: 'Critical',
+      requires_recheck: true,
+      rule_id: null,
+      constraint_type: 'EQ',
+      indirect: false,
+    },
+  ],
+};
+
+/** 선적 상태별 재발행 경로 — 초안이면 다시 쓰면 되지만 제출 후면 무게가 다르다 */
+export const mockReissueByStatus: Partial<Record<ShipmentStatus, ImpactResult['reissue_path']>> = {
+  DRAFT: 'DRAFT_EDIT',
+  REVIEWING: 'DRAFT_EDIT',
+  VERIFIED: 'REISSUE',
+  SUBMITTED: 'ENDORSEMENT',
+  MONITORING: 'SWITCH_BL',
+};
+
+/**
+ * span이 겹치는 교정 제안 — 동시 승인하면 서로를 덮어씁니다 (§5.5).
+ * 상품명세처럼 자유서식인 필드에서만 생깁니다.
+ *
+ * description_of_goods의 원문 'PRECISION MACHINE PARTS'에서
+ * [0,14)="PRECISION MACH"와 [8,22)=" MACHINE PART"가 겹칩니다.
+ */
+export const mockOverlappingSuggestions: Suggestion[] = [
+  {
+    suggestion_id: 'SGT-004',
+    field: 'description_of_goods',
+    as_is: 'PRECISION MACHINE PARTS',
+    to_be: 'PRECISION MACHINERY',
+    authority: '조직사전',
+    glossary_term_id: 'GLS-MACHINERY',
+    confidence: 0.81,
+    scope: [{ doc_id: 'DOC-003', field: 'description_of_goods' }],
+    span: { start: 0, end: 14 },
+  },
+  {
+    suggestion_id: 'SGT-005',
+    field: 'description_of_goods',
+    as_is: 'PRECISION MACHINE PARTS',
+    to_be: 'MACHINE COMPONENTS (HS 8471.30)',
+    authority: 'ISBP 745',
+    glossary_term_id: 'GLS-COMPONENTS',
+    confidence: 0.76,
+    scope: [{ doc_id: 'DOC-003', field: 'description_of_goods' }],
+    span: { start: 8, end: 22 },
+  },
+];
+
+// ─────────────────────────────────────────────
+// F7 신규 mock — AI 판정 설명 (§F7)
+//
+// verdict_id / alert_id → 설명. 네 가지 경우를 하나씩 보여줍니다:
+// 정상 인용(PASS) · 허위 인용 제거 후 재생성(REPAIRED) · 재생성 실패
+// 폴백(FALLBACK) · F6 경보에 붙는 설명. narrative의 수치는 전부
+// mockVerdicts·mockAlerts·mockRealityEvents의 값과 일치시켰습니다.
+// ─────────────────────────────────────────────
+
+export const mockExplanations: Record<string, Explanation> = {
+  // VD-001 (VIOLATION) — 인용 3건(CLAUSE·FIELD·FIELD) 전부 실재함
+  'VD-001': {
+    target_id: 'VD-001',
+    narrative:
+      '본선적재일(2026-07-14)로부터 21일을 초과한 시점에 제출될 예정이라 UCP600 14(c)를 위반합니다. 이 B/L(HLCUBUS2608001)은 조건 변경 협의가 필요합니다.',
+    citations: [
+      {
+        citation_id: 'CIT-001',
+        kind: 'CLAUSE',
+        ref: 'R-UCP-14C',
+        snippet: 'UCP600 14(c) — 서류는 선적일 후 21일보다 늦게 제시되어서는 안 된다.',
+        verified: true,
+      },
+      {
+        citation_id: 'CIT-002',
+        kind: 'FIELD',
+        ref: 'shipped_on_board_date',
+        snippet: '2026-07-14',
+        verified: true,
+      },
+      {
+        citation_id: 'CIT-003',
+        kind: 'FIELD',
+        ref: 'bl_no',
+        snippet: 'HLCUBUS2608001',
+        verified: true,
+      },
+    ],
+    generated_by: 'LLM',
+    integrity: 'PASS',
+    dropped_citations: 0,
+    generated_at: '2026-08-12T01:31:00Z',
+  },
+  // VD-002 (VIOLATION) — 허위 인용 1건을 걸러내고 재생성. 검증 실패한 인용
+  // 1건을 배열에 일부러 남겨둠(화면이 verified:false를 렌더하지 않는지 확인용)
+  'VD-002': {
+    target_id: 'VD-002',
+    narrative:
+      '선적항 필드에 두 후보(BUSAN/INCHEON)가 있어 L/C 44E 지정값(KRPUS BUSAN)과 대조가 필요합니다. 확정 전까지는 위반으로 판정합니다.',
+    citations: [
+      {
+        citation_id: 'CIT-004',
+        kind: 'CLAUSE',
+        ref: 'R-LC-44EF',
+        snippet: 'MT700 :44E: Port of Loading — KRPUS BUSAN',
+        verified: true,
+      },
+      {
+        citation_id: 'CIT-005',
+        kind: 'FIELD',
+        ref: 'port_of_loading',
+        snippet: 'BUSAN (충돌 — INCHEON 후보 있음)',
+        verified: true,
+      },
+      // ⚠ 검증기가 걸러낸 허위 인용 — 존재하지 않는 필드를 인용함. 화면은
+      //   이 항목을 렌더하면 안 됩니다.
+      {
+        citation_id: 'CIT-006',
+        kind: 'FIELD',
+        ref: 'customs_declaration_no',
+        snippet: '세관 신고번호와 대조함 (실재하지 않는 근거)',
+        verified: false,
+      },
+    ],
+    generated_by: 'LLM',
+    integrity: 'REPAIRED',
+    dropped_citations: 1,
+    generated_at: '2026-08-12T01:32:00Z',
+  },
+  // VD-003 (DEFERRED) — LLM 생성 실패로 템플릿 문장 폴백. 인용 1건(FIELD)
+  'VD-003': {
+    target_id: 'VD-003',
+    narrative:
+      '이 판정은 관련 필드가 아직 확인되지 않아 보류되었습니다. 필드가 확인되면 판정이 자동으로 재개됩니다. 지금은 별도 조치가 필요하지 않습니다.',
+    citations: [
+      {
+        citation_id: 'CIT-007',
+        kind: 'FIELD',
+        ref: 'measurement',
+        snippet: '38.5 CBM (필수 확인)',
+        verified: true,
+      },
+    ],
+    generated_by: 'TEMPLATE',
+    integrity: 'FALLBACK',
+    dropped_citations: 0,
+    generated_at: '2026-08-12T01:33:00Z',
+  },
+  // ALT-001 (F6 경보) — 인용 2건: 현실측 이벤트(EVENT) + 서류측 필드(FIELD)
+  'ALT-001': {
+    target_id: 'ALT-001',
+    narrative:
+      'B/L의 본선적재일(2026-07-14)이 울산항 실제 출항 시각(2026-07-13 23:00 KST)보다 늦게 기재되어 있습니다. 배가 이미 떠난 뒤에 선적된 것으로 기록된 셈이라 서류를 다시 확인해야 합니다.',
+    citations: [
+      {
+        citation_id: 'CIT-008',
+        kind: 'EVENT',
+        ref: 'EVT-005',
+        snippet: '출항 (DEPARTURE) — 2026-07-13T14:00:00Z',
+        verified: true,
+      },
+      {
+        citation_id: 'CIT-009',
+        kind: 'FIELD',
+        ref: 'shipped_on_board_date',
+        // 인용 스니펫은 실제 mockFields의 값과 같아야 합니다 — 다르면 인용
+        // 무결성 검사(integrity)를 통과했다고 표시하면서 틀린 값을 보여주게 됩니다
+        snippet: '2026-07-14',
+        verified: true,
+      },
+    ],
+    generated_by: 'LLM',
+    integrity: 'PASS',
+    dropped_citations: 0,
+    generated_at: '2026-07-13T14:11:00Z',
+  },
+};

@@ -1,0 +1,11 @@
+__pycache__
+.pytest_cache
+.venv
+.env
+tests
+
+# 비배포 트리 — 이미지에 넣지 않는다.
+# f3_research: 논문 실험 트리(parquet 데이터셋·joblib·PNG 수백 MB).
+# archive_bl_model_v2: 대체된 초기 프로토타입.
+f3_research
+archive_bl_model_v2

@@ -70,6 +70,7 @@ export function toFieldValueFromWire(wire: WireFieldValueOut): FieldValue {
     bbox: wire.bbox,
     extractor: wire.extractor,
     conflict_flag: wire.conflict_flag,
+    grade: wire.grade,
   };
 }
 
@@ -94,26 +95,16 @@ export function toShipmentAndFields(wire: WireShipmentDetailResponse): {
 /**
  * 화면 FieldValue를 저장 요청 모양으로 바꿉니다.
  *
- * grade는 화면 FieldValue에 아예 없는 값입니다(파생값 — toConfidenceGrade 참고).
- * 게이트웨이가 grade로 DB confidence 등급(ConfidenceGrade)을 결정하므로, 여기서
- * 같은 규칙으로 미리 계산해서 보냅니다. 지어내는 게 아니라 화면에 이미 있는
- * 계산을 그대로 재사용하는 것입니다.
- *
- * isEdited: 사용자가 직접 타이핑해서 고친 필드인지(shared/shipmentStats.ts의
- *   isEditedField로 판정된 값을 그대로 받습니다). 원래 미검출(NOT_FOUND)이던
- *   필드는 값만 채워져도 bbox·confidence가 그대로라 toConfidenceGrade가 여전히
- *   NOT_FOUND를 계산하고, 게이트웨이는 NOT_FOUND 필드의 value를 null로 버립니다
- *   (field_value_not_found_ck) — 사용자가 타이핑한 값이 저장 직후 사라지는
- *   버그였습니다. 사용자가 직접 고친 값은 사용자 본인이 근거이므로 CONFIRMED로
- *   보냅니다(M-2 확정의 저장 경로 반영 — effectiveGradeOf와 같은 결론).
+ * grade는 FieldValue.grade(서버 값 또는 shared/fieldEdit.ts의 편집 결과)를 그대로
+ * 쓰고, 없으면 toConfidenceGrade로 계산합니다. 편집한다고 CONFIRMED가 되지 않습니다.
  */
-export function toWireFieldValueIn(field: FieldValue, isEdited = false): WireFieldValueIn {
+export function toWireFieldValueIn(field: FieldValue): WireFieldValueIn {
   return {
     field_name: field.field_name,
     value: field.value,
     normalized_value: field.normalized_value,
     confidence: field.confidence,
-    grade: isEdited ? 'CONFIRMED' : toConfidenceGrade(field),
+    grade: toConfidenceGrade(field),
     extractor: field.extractor,
     bbox: field.bbox,
     conflict_flag: field.conflict_flag,

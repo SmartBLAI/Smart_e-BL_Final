@@ -5,7 +5,7 @@
  * 규칙(`adapters.ts`)을 화면이 알 필요는 없습니다.
  */
 
-import { postJson } from './client';
+import { gatewayAiPath, gatewayTenantAiPath, GATEWAY_API_BASE_URL, postJson } from './client';
 import { toBLPayload, toVerifyView, type VerifyView } from './adapters';
 import type { WireVerifyRequest, WireVerifyResponse } from './wire';
 import type { FieldValue } from '../types/domain';
@@ -52,6 +52,8 @@ export interface VerifyOptions {
    * 시연·테스트에서 이걸 넣어야 매번 같은 결과가 나옵니다.
    */
   asOf?: string;
+  /** 저장된 선적이면 게이트웨이(인증·감사) 경유, 없으면 aiService 직접 호출 */
+  shipmentId?: string;
   /** 화면을 떠날 때 요청을 취소하기 위한 신호 */
   signal?: AbortSignal;
 }
@@ -74,7 +76,11 @@ export async function verifyShipment(
 
   await acquireVerifySlot();
   try {
-    const res = await postJson<WireVerifyResponse>('/verify', body, options.signal);
+    const res = options.shipmentId
+      ? await postJson<WireVerifyResponse>(
+          gatewayAiPath(options.shipmentId, 'verify'), body, options.signal, GATEWAY_API_BASE_URL,
+        )
+      : await postJson<WireVerifyResponse>(gatewayTenantAiPath('verify'), body, options.signal);
 
     // 백엔드가 판정 시각을 안 주므로 응답을 받은 시각으로 대신합니다.
     // 동기 호출이라 실제 판정 시각과 밀리초 단위 차이입니다.

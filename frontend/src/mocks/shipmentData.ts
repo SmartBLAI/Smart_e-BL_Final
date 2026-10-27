@@ -14,20 +14,26 @@
  *   사정으로 공유 타입을 건드리지 않았습니다.
  */
 
+import type { SkippedRuleView } from '../api/adapters';
 import type {
+  AdapterStatus,
   Alert,
   DocumentMeta,
   DefectPrediction,
+  Explanation,
   FieldValue,
   ImpactResult,
   RealityEvent,
   Shipment,
   Suggestion,
   Verdict,
+  VesselMatch,
 } from '../types/domain';
 import {
+  mockAdapterStatus,
   mockAlerts,
   mockDocuments,
+  mockExplanations,
   mockFields,
   mockImpactResult,
   mockPrediction,
@@ -38,6 +44,7 @@ import {
   mockShipmentVerified,
   mockSuggestions,
   mockVerdicts,
+  mockVesselMatch,
 } from './shipment.fixture';
 
 /**
@@ -68,6 +75,8 @@ export interface ShipmentMockData {
   realityEvents: RealityEvent[];
   /** F6 모순 경보 — S5 상단 요약. 이벤트와 같은 이유로 1건분만 있습니다 */
   alerts: Alert[];
+  /** 게이트웨이가 내려준 "평가하지 못한 룰" (실제 선적만. 목데이터엔 없음) */
+  realitySkipped?: SkippedRuleView[];
   /**
    * 이 선적에 붙어 있는 서류 — S3 문서 뷰어의 탭이 됩니다.
    *
@@ -85,6 +94,18 @@ export interface ShipmentMockData {
    * 따로 다룹니다 — 그 필드를 아직 안 고친 경우입니다.
    */
   impact: ImpactResult;
+  /**
+   * F6 어댑터 연결 상태.
+   *
+   * ⚠ 이벤트가 없는 선적이라고 null을 넣지 않습니다. connected: false이거나
+   *   coverage 밖(이 선적의 항이 울산이 아님)임을 밝히는 값을 항상 채워둡니다
+   *   — "이상 없음"이 아니라 "볼 수 없음"으로 읽혀야 하기 때문입니다 (§5.6).
+   */
+  adapterStatus: AdapterStatus | null;
+  /** F6 선명 → 콜사인 해소 결과. 이 선적의 항이 울산이 아니면 NOT_FOUND */
+  vesselMatch: VesselMatch | null;
+  /** F7 AI 판정 설명 — verdict_id/alert_id → 설명. 없는 대상은 키 자체가 없음 */
+  explanations: Record<string, Explanation>;
 }
 
 /**
@@ -362,6 +383,27 @@ const submittedImpact: ImpactResult = {
 };
 
 // ─────────────────────────────────────────────
+// F6 — 메인 선적(SHP-2026-0812-001) 외 나머지 선적용 "볼 수 없음" 값
+//
+// 나머지 선적은 선적항·양륙항이 울산항이 아니라서 관제 기록 자체가 없습니다.
+// connected: true(어댑터는 붙어 있음)로 두되 coverage_note로 "이 선적은
+// 커버리지 밖"임을 밝혀서, "이상 없음"과 "볼 수 없음"이 섞이지 않게 합니다.
+// ─────────────────────────────────────────────
+
+const outOfCoverageAdapterStatus: AdapterStatus = {
+  ...mockAdapterStatus,
+  coverage_note: '이 선적의 선적항·양륙항이 울산항이 아니어서 관제 기록이 존재하지 않습니다.',
+};
+
+const notFoundVesselMatch: VesselMatch = {
+  bl_vessel: '',
+  normalized: '',
+  call_sign: null,
+  method: 'NOT_FOUND',
+  candidates: [],
+};
+
+// ─────────────────────────────────────────────
 // shipment_id → 목데이터 묶음
 // ─────────────────────────────────────────────
 
@@ -383,6 +425,9 @@ export const mockDataByShipment: Record<string, ShipmentMockData> = {
     alerts: mockAlerts,
     impact: mockImpactResult,
     documents: documentsCitedBy(mockFields),
+    adapterStatus: mockAdapterStatus,
+    vesselMatch: mockVesselMatch,
+    explanations: mockExplanations,
   },
   // DRAFT — 아직 검증 실행 전이라 판정도 하자 확률도 없고, 필드도 SI·L/C에서
   // 나오는 6개만 값이 있습니다. 그래서 교정 제안도 port_of_discharge 1건만
@@ -397,6 +442,9 @@ export const mockDataByShipment: Record<string, ShipmentMockData> = {
     alerts: [],
     impact: draftImpact,
     documents: documentsCitedBy(draftFields),
+    adapterStatus: outOfCoverageAdapterStatus,
+    vesselMatch: notFoundVesselMatch,
+    explanations: {},
   },
   // VERIFIED — 검증을 통과한 선적이라 교정 제안은 이미 다 처리(승인/거절)된
   // 것으로 봅니다. 위반 0건으로 통과했는데 안 고친 제안이 3건 남아 있으면
@@ -412,6 +460,9 @@ export const mockDataByShipment: Record<string, ShipmentMockData> = {
     alerts: [],
     impact: verifiedImpact,
     documents: documentsCitedBy(verifiedFields),
+    adapterStatus: outOfCoverageAdapterStatus,
+    vesselMatch: notFoundVesselMatch,
+    explanations: {},
   },
   [mockShipmentSubmitted.shipment_id]: {
     shipment: mockShipmentSubmitted,
@@ -423,48 +474,17 @@ export const mockDataByShipment: Record<string, ShipmentMockData> = {
     alerts: [],
     impact: submittedImpact,
     documents: documentsCitedBy(submittedFields),
+    adapterStatus: outOfCoverageAdapterStatus,
+    vesselMatch: notFoundVesselMatch,
+    explanations: {},
   },
 };
 
 /**
- * URL의 :id로 선적 묶음을 찾습니다. 없는 id면 null —
- * 화면 쪽에서 "선적을 찾을 수 없습니다" 안내를 띄우게 합니다.
- */
-export function findShipmentData(shipmentId: string | undefined): ShipmentMockData | null {
-  if (shipmentId === undefined) return null;
-  return mockDataByShipment[shipmentId] ?? null;
-}
-
-/**
- * 새로 업로드된 선적의 묶음을 만듭니다 (S2 → S3 흐름).
- *
- * ⚠ 목 추출은 가짜라 어떤 파일을 올려도 결과가 같습니다. 기존 DRAFT 선적과
- *   같은 필드 프로필(SI·L/C에서 나오는 6개만 값 있음)을 씁니다 — "업로드한
- *   파일에서 뽑은 척"하는 셈이라 여기에 명시합니다. 실제 추출이 붙으면
- *   이 함수는 사라지고 백엔드 응답을 그대로 씁니다.
- *
- * 검증 전이므로 판정·하자확률·경보·현실 이벤트는 전부 비어 있습니다.
- */
-export function buildNewDraftData(shipment: Shipment): ShipmentMockData {
-  const fields = toDraftFields(withIdentityOf(shipment));
-  return {
-    shipment,
-    fields,
-    suggestions: suggestionsFor(fields),
-    verdicts: [],
-    prediction: null,
-    realityEvents: [],
-    alerts: [],
-    documents: documentsCitedBy(fields),
-    impact: draftImpact,
-  };
-}
-
-/**
  * 실제 aiService `/extract*` 응답에서 나온 필드로 새 선적의 묶음을 만듭니다.
  *
- * buildNewDraftData와 똑같은 모양이지만, 필드를 목데이터에서 만들지 않고
- * 부르는 쪽(shipmentStore)이 이미 갖고 있는 실제 추출 결과·서류 목록을 그대로 씁니다.
+ * 필드를 목데이터에서 만들지 않고 부르는 쪽(shipmentStore)이 이미 갖고 있는
+ * 실제 추출 결과·서류 목록을 그대로 씁니다.
  * documents는 mockDocuments가 아니라 게이트웨이가 준 진짜 서류입니다 — DocumentViewer가
  * 이걸로 실제 파일 미리보기(iframe) 여부를 판단합니다.
  *
@@ -491,5 +511,8 @@ export function buildDraftDataFromFields(
     alerts: [],
     documents,
     impact: draftImpact,
+    adapterStatus: outOfCoverageAdapterStatus,
+    vesselMatch: notFoundVesselMatch,
+    explanations: {},
   };
 }

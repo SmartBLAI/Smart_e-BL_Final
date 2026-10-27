@@ -1,16 +1,25 @@
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { Verdict } from '../../types/domain';
+import type { Explanation, RealityEvent, Verdict } from '../../types/domain';
 import { SeverityBadge } from '../../components/SeverityBadge';
+import { ExplanationBlock } from '../../components/ExplanationBlock';
 import { SEVERITY, VERDICT_RESULT_LABEL, labelOfField } from '../../constants/domain';
 
 interface VerdictCardProps {
   verdict: Verdict;
   /** [해당 필드로 이동] 링크를 만들 선적 id */
   shipmentId: string;
+  /**
+   * F7 — 이 판정의 "왜". 없으면(null/undefined) 근거 보기 접이단이 아예 안
+   * 그려짐. S7 리포트 등 F7을 아직 안 붙인 다른 화면도 이 카드를 쓰고
+   * 있어서 선택 필드로 둡니다 — 그 화면들을 이 작업 범위에서 고치지 않습니다.
+   */
+  explanation?: Explanation | null;
+  /** kind: 'EVENT' 인용을 해석할 때 씀 */
+  realityEvents?: RealityEvent[];
 }
 
-export function VerdictCard({ verdict, shipmentId }: VerdictCardProps) {
+export function VerdictCard({ verdict, shipmentId, explanation = null, realityEvents }: VerdictCardProps) {
   const targetField = verdict.target_fields[0];
 
   // ⚠ 판정 보류는 심각도를 그대로 보여주면 안 됩니다.
@@ -92,6 +101,8 @@ export function VerdictCard({ verdict, shipmentId }: VerdictCardProps) {
           </Link>
         )}
       </div>
+
+      <ExplanationBlock explanation={explanation} realityEvents={realityEvents} />
     </div>
   );
 }

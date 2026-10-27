@@ -4,7 +4,7 @@
  * `/report/share`는 이번 범위 밖입니다 (S7Report 주석 참고).
  */
 
-import { postJson, postJsonForBlob } from './client';
+import { gatewayAiPath, gatewayTenantAiPath, GATEWAY_API_BASE_URL, postJson, postJsonForBlob } from './client';
 import { toBLPayload } from './adapters';
 import { toReportView, type ReportView } from './adaptersReport';
 import type { WireReportRequest, WireReportResponse } from './wireReport';
@@ -20,8 +20,12 @@ export async function generateReport(
   fields: FieldValue[],
   lc?: Record<string, unknown>,
   signal?: AbortSignal,
+  shipmentId?: string, // 있으면 선적 단위 경로, 없으면 테넌트 단위 경로 (둘 다 게이트웨이 경유)
 ): Promise<ReportView> {
-  const res = await postJson<WireReportResponse>('/report', toRequestBody(fields, lc), signal);
+  const body = toRequestBody(fields, lc);
+  const res = shipmentId
+    ? await postJson<WireReportResponse>(gatewayAiPath(shipmentId, 'report'), body, signal, GATEWAY_API_BASE_URL)
+    : await postJson<WireReportResponse>(gatewayTenantAiPath('report'), body, signal);
   return toReportView(res, new Date().toISOString());
 }
 
@@ -33,8 +37,12 @@ export async function downloadReportPdf(
   fields: FieldValue[],
   lc?: Record<string, unknown>,
   signal?: AbortSignal,
+  shipmentId?: string,
 ): Promise<void> {
-  const { blob, filename } = await postJsonForBlob('/report/pdf', toRequestBody(fields, lc), signal);
+  const body = toRequestBody(fields, lc);
+  const { blob, filename } = shipmentId
+    ? await postJsonForBlob(gatewayAiPath(shipmentId, 'report/pdf'), body, signal, GATEWAY_API_BASE_URL)
+    : await postJsonForBlob(gatewayTenantAiPath('report/pdf'), body, signal);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

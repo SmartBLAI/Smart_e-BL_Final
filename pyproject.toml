@@ -10,8 +10,11 @@ requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.19.1",
     "asyncpg>=0.31.0",
+    "boto3>=1.35",
     "fastapi>=0.141.1",
+    "httpx>=0.27",
     "psycopg[binary]>=3.3.4",
+    "PyJWT[crypto]>=2.9,<3",
     "pydantic-settings>=2.15.0",
     "python-multipart>=0.0.32",
     "sqlalchemy[asyncio]>=2.0",
@@ -31,12 +34,12 @@ requires = ["uv_build>=0.12.3,<0.13.0"]
 build-backend = "uv_build"
 
 [tool.pytest.ini_options]
-# `ai/defect_model` 은 네임스페이스 패키지(ai/__init__.py 없음)이므로 저장소 루트가
-# sys.path 에 있어야 `from ai.defect_model import ...` 절대 임포트가 동작한다.
-# `python -m pytest` 는 cwd 를 자동으로 넣지만 bare `pytest` 실행 파일은 그렇지
-# 않다 — README/작업 정의의 `pytest ai/defect_model/tests/` 명령이 그대로
-# 동작하도록 명시한다.
-pythonpath = ["."]
+# `ai/` 가 AI 서비스·실험 트리 공통의 임포트 루트다 — F 모듈(`f1_intake`,
+# `f2_terms`, `f3_rules`, `f3_model`, `f3_research`, `f4_report`, `f6_reality`)은
+# 전부 최상위 이름으로 임포트한다. 저장소 루트에서 `pytest` 를 돌릴 때도 그
+# 이름들이 잡히도록 여기 명시한다. (`cd ai && pytest` 는 `ai/pytest.ini` 가
+# 같은 일을 한다.)
+pythonpath = ["ai"]
 asyncio_mode = "auto"
 # smart_e_bl.db.async_engine는 임포트 시점에 한 번만 만들어지는 모듈 전역
 # 커넥션 풀이다 — 테스트마다 새 이벤트 루프를 쓰면 이전 루프에 묶인 커넥션을

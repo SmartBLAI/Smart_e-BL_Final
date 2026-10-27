@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toBLPayload } from './adapters';
+import { toBLPayload, toScreenFieldName } from './adapters';
 import type { FieldValue } from '../types/domain';
 
 function field(overrides: Partial<FieldValue> = {}): FieldValue {
@@ -40,5 +40,13 @@ describe('toBLPayload', () => {
     const bl = toBLPayload([field({ field_name: 'shipped_on_board_date', value: '2026-01-01' })]);
     expect(bl.on_board_date).toBe('2026-01-01');
     expect(bl.shipped_on_board_date).toBeUndefined();
+  });
+});
+
+describe('toScreenFieldName', () => {
+  it('룰 어휘를 화면 필드 이름으로, 모르는 이름은 그대로', () => {
+    expect(toScreenFieldName('on_board_date')).toBe('shipped_on_board_date');
+    expect(toScreenFieldName('vessel')).toBe('vessel_voyage');
+    expect(toScreenFieldName('port_of_loading')).toBe('port_of_loading');
   });
 });

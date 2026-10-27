@@ -14,12 +14,19 @@ import httpx
 import pytest
 
 from smart_e_bl.api.main import app
+from smart_e_bl.config import settings
 
 
 async def _shipment_ids(client: httpx.AsyncClient) -> set[str]:
     res = await client.get("/api/v1/shipments")
     res.raise_for_status()
     return {s["shipment_id"] for s in res.json()["shipments"]}
+
+
+@pytest.fixture(autouse=True)
+def _bootstrap_auth(monkeypatch):
+    # 기존 스모크 테스트는 토큰 없이 부트스트랩 ADMIN 으로 돈다.
+    monkeypatch.setattr(settings, "auth_mode", "bootstrap")
 
 
 @pytest.fixture

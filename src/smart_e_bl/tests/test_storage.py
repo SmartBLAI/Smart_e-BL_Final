@@ -42,3 +42,47 @@ def test_쓰다가_실패하면_임시파일만_남고_최종_경로는_비어�
     leftovers = list(tmp_path.rglob("*"))
     assert not any(p.is_file() and not p.name.startswith(".") for p in leftovers)
     monkeypatch.setattr("smart_e_bl.storage.os.replace", real_replace)
+
+
+def test_read_로컬_경로(tmp_path):
+    from smart_e_bl.storage import read
+
+    _, uri = save(str(tmp_path), b"local", ".bin")
+    assert read(uri) == b"local"
+
+
+def _fake_s3(monkeypatch, store):
+    import io
+    from unittest.mock import MagicMock
+
+    from smart_e_bl.config import settings
+
+    monkeypatch.setattr(settings, "storage_backend", "s3")
+    monkeypatch.setattr(settings, "s3_document_bucket", "bkt")
+    client = MagicMock()
+    client.put_object.side_effect = lambda Bucket, Key, Body, **kw: store.update({Key: (Body, kw)})
+    client.get_object.side_effect = lambda Bucket, Key: {"Body": io.BytesIO(store[Key][0])}
+    monkeypatch.setattr("boto3.client", lambda *a, **kw: client)
+    return client
+
+
+def test_s3_저장과_읽기(tmp_path, monkeypatch):
+    from smart_e_bl.storage import read
+
+    store: dict = {}
+    _fake_s3(monkeypatch, store)
+
+    digest, uri = save(str(tmp_path), b"remote", ".pdf")
+
+    assert uri == f"s3://bkt/documents/{digest[:2]}/{digest}.pdf"
+    assert next(iter(store.values()))[1]["ServerSideEncryption"] == "AES256"
+    assert read(uri) == b"remote"
+    assert not list(tmp_path.iterdir())  # 로컬 디스크에는 쓰지 않는다
+
+
+def test_s3_다른_버킷_URI는_거부(monkeypatch):
+    from smart_e_bl.storage import read
+
+    _fake_s3(monkeypatch, {})
+    with __import__("pytest").raises(ValueError):
+        read("s3://other/documents/aa/x.pdf")

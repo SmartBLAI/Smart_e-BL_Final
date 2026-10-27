@@ -1,18 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FileQuestion, Loader2 } from 'lucide-react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { FieldForm } from './FieldForm';
-import { DocumentViewer, DISPLAY_SIZE } from './DocumentViewer';
+import { DocumentViewer } from './DocumentViewer';
 import { VerifyBar } from './VerifyBar';
 import { ImpactPanel } from './ImpactPanel';
 import { EmptyState } from '../../components/EmptyState';
 import { PageContainer } from '../../components/PageContainer';
 import { DataSourceNotice } from '../../components/DataSourceNotice';
-import { useShipmentData, useShipmentStoreStatus } from '../../shared/shipmentStore';
+import {
+  useConfirmedFields,
+  useEditField,
+  useShipmentData,
+  useShipmentStoreStatus,
+} from '../../shared/shipmentStore';
+import { toScreenFieldName } from '../../api/adapters';
 import { ShipmentHeader } from '../../components/ShipmentHeader';
 import {
   resolveConflicts,
-  type ConfirmedFields,
   type ResolvedConflicts,
 } from '../../shared/shipmentStats';
 import { useNormalize } from '../../api/useNormalize';
@@ -47,18 +52,58 @@ export function S3Draft() {
 
   // 지금 문서 뷰어에서 하이라이트할 필드. FieldRow를 클릭하면 여기로 들어옴.
   //
-  // 초기값은 URL의 ?focus=<field_name>에서 옵니다 — 화면전이_정의.md §6에
-  // 정의된 규칙으로, S4 판정과 S6 경보가 "이 필드 고치러 가기"로 넘어올 때
-  // 어느 필드를 볼지 지정합니다. 없으면 null(아무것도 선택 안 함).
+  // ?focus=<field_name>은 화면전이_정의.md §6에 정의된 규칙으로, S4 판정과 S6
+  // 경보가 "이 필드 고치러 가기"로 넘어올 때 어느 필드를 볼지 지정합니다.
+  // 새로고침·딥링크 직후에는 data가 아직 없어서(useState 초기값 시점) 못 찾으므로,
+  // 데이터가 생긴 뒤에 한 번만 적용합니다. 룰 어휘(on_board_date 등)도 받아줍니다.
   const focusParam = searchParams.get('focus');
-  const [focusedField, setFocusedField] = useState<FieldValue | null>(
-    () => data?.fields.find((field) => field.field_name === focusParam) ?? null,
-  );
+  const [focusedField, setFocusedField] = useState<FieldValue | null>(null);
+  const appliedFocus = useRef<string | null>(null);
 
-  // 필드별로 사용자가 고친 값 (필드 이름 → 새 값). FieldRow에서 직접 타이핑해서
-  // 고치는 것과 SuggestionCard에서 교정 제안을 승인하는 것, 둘 다 결국 "이 필드
-  // 값을 이걸로 바꾼다"는 같은 동작이라서 여기 하나의 상태로 합쳐서 관리합니다.
+  useEffect(() => {
+    if (focusParam === null || data === null || appliedFocus.current === focusParam) return;
+    const target = data.fields.find((field) => field.field_name === toScreenFieldName(focusParam));
+    if (target === undefined) return;
+    appliedFocus.current = focusParam;
+    setFocusedField(target);
+    // 접힌 그룹이 펼쳐진 뒤(FieldGroup effect → 재렌더)에 행이 생기므로 두 프레임 뒤에 찾습니다
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document
+          .querySelector(`[data-field-name="${target.field_name}"]`)
+          ?.scrollIntoView({ block: 'center', behavior: 'smooth' }),
+      ),
+    );
+  }, [focusParam, data]);
+
+  // 값 수정은 즉시 스토어·게이트웨이에 저장됩니다(useEditField) — 그래서 필드 값
+  // 자체는 data.fields가 항상 최신입니다. editedValues는 "이번에 고친 필드" 표식
+  // (영향분석 패널이 이 키들을 봅니다)으로만 남겼고, 저장에 실패하면 키를 뺍니다.
+  // 직접 타이핑과 교정 제안 승인은 같은 applyEdit를 거칩니다.
   const [editedValues, setEditedValues] = useState<Record<string, string | null>>({});
+  const editField = useEditField();
+  const blDocumentId = data?.documents.find((doc) => doc.kind === 'BL')?.document_id ?? null;
+  const [savedField, setSavedField] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  function applyEdit(fieldName: string, value: string | null) {
+    setEditError(null);
+    setSavedField(null);
+    setEditedValues((prev) => ({ ...prev, [fieldName]: value }));
+    editField(id ?? '', blDocumentId, fieldName, value).then(
+      () => {
+        setSavedField(fieldName);
+        setTimeout(() => setSavedField((cur) => (cur === fieldName ? null : cur)), 2000);
+      },
+      () => {
+        setEditedValues((prev) => {
+          const { [fieldName]: _undone, ...rest } = prev;
+          return rest;
+        });
+        setEditError(`"${fieldName}" 값을 저장하지 못했습니다. 원래 값으로 되돌렸습니다.`);
+      },
+    );
+  }
 
   // 값 충돌 필드에서 사용자가 고른 후보. editedValues와 따로 두는 이유는
   // "직접 새 값을 입력한 것"과 "이미 읽어낸 후보 중 고른 것"이 다른 행동이기
@@ -80,17 +125,17 @@ export function S3Draft() {
     });
   }
 
-  function handleFieldEdit(fieldName: string, value: string | null) {
-    setEditedValues((prev) => ({ ...prev, [fieldName]: value }));
-  }
+  const handleFieldEdit = applyEdit;
 
   // 값은 안 고치고 "다시 보니 이 값이 맞다"고 확인만 표시한 필드. editedValues와
   // 따로 두는 이유는 위 handleFieldEdit과 같습니다 — "새 값을 쓴 것"과 "원래
   // 값을 확인만 한 것"은 다른 행동입니다.
-  const [confirmedFields, setConfirmedFields] = useState<ConfirmedFields>({});
-
+  // 이 화면을 떠났다 돌아와도 남도록 스토어(선적 id별)에 둡니다.
+  const [confirmedFields, confirmField] = useConfirmedFields(id);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   function handleFieldConfirm(fieldName: string) {
-    setConfirmedFields((prev) => ({ ...prev, [fieldName]: true }));
+    setConfirmError(null);
+    confirmField(fieldName).catch(() => setConfirmError('값 확인을 저장하지 못했습니다. 다시 시도해 주세요.'));
   }
 
   // /normalize/apply·reject 호출이 실패했을 때만 채웁니다 — 성공하면 조용히 넘어갑니다.
@@ -105,15 +150,10 @@ export function S3Draft() {
     const original = suggestionsById[suggestion.suggestion_id];
 
     if (original === undefined) {
-      setEditedValues((prev) => {
-        const next = { ...prev, [suggestion.field]: suggestion.to_be };
-        if (applyToAllInScope) {
-          for (const { field } of suggestion.scope) {
-            next[field] = suggestion.to_be;
-          }
-        }
-        return next;
-      });
+      applyEdit(suggestion.field, suggestion.to_be);
+      if (applyToAllInScope) {
+        for (const { field } of suggestion.scope) applyEdit(field, suggestion.to_be);
+      }
       return;
     }
 
@@ -130,15 +170,10 @@ export function S3Draft() {
       // 해서입니다.
       const patched = result.documents[0]?.fields ?? {};
       setSuggestionError(null);
-      setEditedValues((prev) => {
-        const next = { ...prev, [suggestion.field]: patched[suggestion.field] ?? null };
-        if (applyToAllInScope) {
-          for (const { field } of suggestion.scope) {
-            next[field] = patched[field] ?? null;
-          }
-        }
-        return next;
-      });
+      applyEdit(suggestion.field, patched[suggestion.field] ?? null);
+      if (applyToAllInScope) {
+        for (const { field } of suggestion.scope) applyEdit(field, patched[field] ?? null);
+      }
     } catch (err) {
       setSuggestionError(err instanceof ApiError ? err.detail : '제안 적용에 실패했습니다.');
     }
@@ -179,19 +214,6 @@ export function S3Draft() {
     );
   }
 
-  // 뷰어(480px 고정) + 필드폼 + 영향패널을 한 줄에 다 넣으면 콘텐츠 최대폭
-  // (1280px)을 넘어서 필드폼이 심하게 눌려 줄바꿈됩니다. 페이지 폭 자체를
-  // 늘리는 방법도 있지만, 그건 이 프로젝트가 화면마다 통일하기로 한 레이아웃
-  // 폭 규칙을 이 화면만 깨는 셈이라 피했습니다. 대신 영향 패널을 보는
-  // 동안에는 문서 뷰어를 잠깐 숨겨서 필드폼에 자리를 돌려줍니다 — 패널이
-  // 화면에 고정(fixed)으로 뜨는 동안 밑에 깔린 내용과 겹치지 않도록, 그
-  // 자리만큼(패널 폭 320px + ImpactPanel의 right 여백 16px + 약간의 틈)만큼
-  // 본문 오른쪽에 미리 여백을 비워둡니다. 여백을 너무 넉넉하게 주면 패널이
-  // 본문과 멀찍이 떨어져 보여서, 딱 붙지도 겹치지도 않을 만큼만 좁게 잡았습니다.
-  const contentStyle = {
-    paddingRight: isImpactOpen ? 344 : 0,
-  };
-
   // 충돌이 해소된 필드는 고른 후보의 값·신뢰도로 갈아끼운 뒤 아래로 내려보냅니다.
   // 그래야 등급 계산·필수 확인 건수·검증 게이트가 전부 같은 필드를 보고 움직입니다.
   const fields = resolveConflicts(data.fields, resolvedConflicts);
@@ -211,7 +233,10 @@ export function S3Draft() {
 
   return (
     <PageContainer>
-      <div style={contentStyle}>
+      {/* 영향 패널(fixed, 폭 354px + 오른쪽 여백)이 열린 동안엔 .s3-impact-open이 본문 오른쪽을
+          비우고 뷰어·필드폼을 세로로 쌓습니다 — 가로로 두면 필드폼이 ~330px로 눌려
+          라벨·값·뱃지가 겹칩니다. 규칙은 index.css에 있습니다. */}
+      <div className={isImpactOpen ? 's3-impact-open' : undefined}>
         <div
           style={{
             display: 'flex',
@@ -220,7 +245,7 @@ export function S3Draft() {
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, textAlign: 'left' }}>
-            <h1 style={{ margin: 0, fontSize: 22 }}>초안 편집기</h1>
+            <h1 className="page-title">초안 편집기</h1>
             {/* 어느 선적을 보고 있는지 — 세 화면(S3·S5·S7)이 같은 부품을 씁니다 */}
             <ShipmentHeader shipment={data.shipment} />
           </div>
@@ -237,6 +262,11 @@ export function S3Draft() {
           ) : isNormalizeLoading ? (
             <EmptyState icon={Loader2} message="용어 교정 제안을 불러오는 중입니다…" spin />
           ) : null}
+          {(confirmError ?? editError) !== null && (
+            <p style={{ color: 'var(--severity-critical)', fontSize: 13, margin: '8px 0 0' }}>
+              {confirmError ?? editError}
+            </p>
+          )}
           {suggestionError !== null && (
             <p style={{ color: 'var(--severity-critical)', fontSize: 13, margin: '8px 0 0' }}>
               {suggestionError}
@@ -248,38 +278,11 @@ export function S3Draft() {
             1024px 이하에서는 미디어쿼리로 세로 쌓기로 바뀝니다. 인라인
             style로는 미디어쿼리를 못 써서 이 div만 className을 씁니다. */}
         <div className="s3-content-row">
-          {isImpactOpen ? (
-            // 뷰어 자리를 완전히 비워두면 "그냥 없어진 것"처럼 보여서, 실제
-            // 뷰어 박스(DocumentViewer의 documentAreaStyle)와 같은 톤의 회색
-            // 박스를 폭만 좁혀서 그대로 둡니다 — 높이는 뷰어와 맞춰서
-            // "여기 뷰어 있었다"는 느낌을 유지합니다.
-            <div
-              style={{
-                flexShrink: 0,
-                width: 140,
-                height: DISPLAY_SIZE.height,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: 'var(--space-2)',
-                textAlign: 'center',
-                backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-card)',
-                boxShadow: 'var(--shadow-card)',
-              }}
-            >
-              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
-                영향 패널을 보는 동안 문서 미리보기를 숨겼습니다. 패널을 닫으면 다시 보입니다.
-              </p>
-            </div>
-          ) : (
-            <DocumentViewer
-              focusedField={focusedField ?? undefined}
-              documents={data.documents}
-              shipmentId={id ?? ''}
-            />
-          )}
+          <DocumentViewer
+            focusedField={focusedField ?? undefined}
+            documents={data.documents}
+            shipmentId={id ?? ''}
+          />
           <div style={{ flex: 1, minWidth: 0 }}>
             {/* fields는 원본(data.fields)을 넘깁니다 — FieldForm이 그룹 배치를
                 원본 등급으로 정해야 후보를 고른 카드가 다른 그룹으로 튀어나가지
@@ -293,6 +296,7 @@ export function S3Draft() {
               onFieldFocus={setFocusedField}
               editedValues={editedValues}
               onFieldEdit={handleFieldEdit}
+              savedFieldName={savedField}
               confirmedFields={confirmedFields}
               onFieldConfirm={handleFieldConfirm}
               onSuggestionAccept={handleSuggestionAccept}
@@ -323,7 +327,6 @@ export function S3Draft() {
             documents={data.documents}
             verdicts={data.verdicts}
             prediction={data.prediction}
-            editedValues={editedValues}
             confirmedFields={confirmedFields}
           />
         </div>
@@ -331,6 +334,7 @@ export function S3Draft() {
 
       <ImpactPanel
         impact={data.impact}
+        shipment={data.shipment}
         editedValues={editedValues}
         resolvedConflicts={resolvedConflicts}
       />

@@ -14,6 +14,8 @@ interface FieldRowProps {
   displayValue: string | null;
   /** 원본 값에서 바뀌었는지 — FieldForm이 계산해서 내려줌 */
   isEdited: boolean;
+  /** 방금 게이트웨이에 저장됐는지 */
+  justSaved?: boolean;
   /** 지금 이 행이 인라인 입력창을 보여주고 있는지 */
   isEditing: boolean;
   /** 입력창에 지금 타이핑 중인 텍스트 (isEditing일 때만 의미 있음) */
@@ -46,6 +48,7 @@ export function FieldRow({
   field,
   displayValue,
   isEdited,
+  justSaved = false,
   isEditing,
   draft,
   onDraftChange,
@@ -78,6 +81,9 @@ export function FieldRow({
       onKeyDown={
         onClick
           ? (event) => {
+              // 안쪽 버튼·값 영역에서 올라온 키 입력은 무시 — 안 그러면 "값 확인함"
+              // 버튼에서 Enter를 눌러도 preventDefault로 막히고 하이라이트만 옮겨갑니다
+              if (event.target !== event.currentTarget) return;
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
                 onClick();
@@ -88,6 +94,8 @@ export function FieldRow({
       // 세 칸 배치와 좁은 화면에서의 줄바꿈은 index.css의 .s3-field-row가 맡습니다
       // (인라인 스타일로는 미디어쿼리를 못 씁니다)
       className="s3-field-row"
+      // ?focus= 딥링크가 이 행으로 스크롤할 때 찾는 표식
+      data-field-name={field.field_name}
       style={{
         gap: 'var(--space-3)',
         padding: '14px 18px',
@@ -134,6 +142,17 @@ export function FieldRow({
           }}
         />
       ) : (
+        // 값 영역(role=button)과 "값 확인함" 버튼은 형제로 둡니다 — 버튼을 role=button
+        // 안에 넣으면 중첩 인터랙티브라 키보드 Enter가 값 편집으로 가로채집니다.
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            flexWrap: 'wrap',
+            minWidth: 0,
+          }}
+        >
         <span
           onClick={onStartEdit}
           role="button"
@@ -167,12 +186,16 @@ export function FieldRow({
               표시 단위 {field.normalized_value} · 값 변경 아님
             </span>
           )}
+          {justSaved && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand-primary)' }}>저장됨</span>
+          )}
           {isEdited && (
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand-primary)' }}>수정됨</span>
           )}
           {!isEdited && isConfirmed && (
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand-primary)' }}>확인됨</span>
           )}
+        </span>
           {onConfirm !== undefined && (
             <button
               type="button"

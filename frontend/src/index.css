@@ -126,10 +126,6 @@
     --confidence-required-bg: rgba(248, 113, 113, 0.12);
     --confidence-not-found-bg: rgba(255, 255, 255, 0.06);
   }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
 }
 
 #root {
@@ -175,12 +171,24 @@ h2 {
     font-size: 20px;
   }
 }
+/* 앱 화면(S1~S7) 공통 제목 스케일: 페이지 제목과 섹션 제목이 같은 크기. S0 히어로는 제외. */
+.page-title,
+.section-title {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.4px;
+  margin: 0;
+  text-align: left;
+}
+.section-title {
+  margin: var(--space-4) 0 var(--space-2);
+}
 p {
   margin: 0;
 }
 
-code,
-.counter {
+code {
   font-family: var(--mono);
   display: inline-flex;
   border-radius: 4px;
@@ -312,6 +320,34 @@ button:disabled {
   .s3-viewer-box {
     width: 100%;
     max-width: 480px;
+  }
+}
+
+/* 영향 패널이 열린 S3 — 본문 오른쪽을 패널 자리로 비우고(패널 폭 354 + 여백),
+   남은 폭에선 뷰어+필드폼을 가로로 두면 필드폼이 ~330px로 눌리므로 세로로 쌉니다. */
+.s3-impact-open {
+  padding-right: 344px;
+}
+.s3-impact-open .s3-content-row {
+  flex-direction: column;
+  align-items: stretch;
+}
+.s3-impact-open .s3-viewer-box {
+  width: 100%;
+  max-width: 480px;
+}
+
+/* S3 필드 한 줄 — [라벨 / 값 / 등급 뱃지] 세 칸. 간격(gap)은 FieldRow의 인라인
+   style이 줍니다. 좁은 화면에서는 뱃지가 아래 줄로 내려갑니다. */
+.s3-field-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .s3-field-row {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 }
 

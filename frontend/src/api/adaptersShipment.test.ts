@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { toWireFieldValueIn } from './adaptersShipment';
+import { toShipmentAndFields, toWireFieldValueIn } from './adaptersShipment';
+import type { WireShipmentDetailResponse } from './wireShipment';
 import type { FieldValue } from '../types/domain';
 
 function field(overrides: Partial<FieldValue> = {}): FieldValue {
@@ -18,17 +19,43 @@ function field(overrides: Partial<FieldValue> = {}): FieldValue {
 }
 
 describe('toWireFieldValueIn', () => {
-  it('원래 NOT_FOUND(값 없음)이던 필드에 값을 넣고 편집됨으로 저장하면 CONFIRMED로 보내고 value도 살아있음', () => {
-    // 원래 미검출: 값 없음 · bbox 없음 · confidence 0
-    const edited = field({ value: 'BUSAN', bbox: null, confidence: 0 });
-    const wire = toWireFieldValueIn(edited, true);
-    expect(wire.grade).toBe('CONFIRMED');
-    expect(wire.value).toBe('BUSAN');
+  it('FieldValue.grade가 있으면 그대로, 없으면 toConfidenceGrade 계산', () => {
+    expect(toWireFieldValueIn(field({ grade: 'REQUIRED', confidence: 0.99 })).grade).toBe('REQUIRED');
+    expect(toWireFieldValueIn(field({ value: 'BUSAN', bbox: null, confidence: 0 })).grade).toBe('NOT_FOUND');
+  });
+});
+
+describe('toShipmentAndFields grade', () => {
+  const wireField = {
+    field_name: 'shipper', value: 'A', normalized_value: null, confidence: 0.5, source_doc_id: null,
+    page: 1, bbox: [0.1, 0.1, 0.2, 0.2], extractor: 'rule', conflict_flag: false,
+  };
+  const detail = (f: object) =>
+    ({ shipment_id: 's1', status: 'DRAFT', fields: [f], documents: [], verdicts: [], prediction: null }) as unknown as WireShipmentDetailResponse;
+
+  it('서버 grade를 FieldValue로 옮기고, 없으면 undefined', () => {
+    expect(toShipmentAndFields(detail({ ...wireField, grade: 'CONFIRMED' })).fields[0].grade).toBe('CONFIRMED');
+    expect(toShipmentAndFields(detail(wireField)).fields[0].grade).toBeUndefined();
+  });
+});
+
+describe('toShipmentAndFields 검증 스냅샷', () => {
+  const base = {
+    shipment_id: 's1', bl_no: null, status: 'DRAFT', updated_at: '2026-01-01T00:00:00Z',
+    fields: [], documents: [],
+  } as unknown as WireShipmentDetailResponse;
+
+  it('저장된 판정·하자확률을 번역 없이 그대로 내려줌', () => {
+    const verdicts = [{ rule_id: 'D001' }];
+    const prediction = { defect_probability: 0.4 };
+    const out = toShipmentAndFields({ ...base, verdicts, prediction } as unknown as WireShipmentDetailResponse);
+    expect(out.verdicts).toBe(verdicts);
+    expect(out.prediction).toBe(prediction);
   });
 
-  it('편집하지 않은 필드는 toConfidenceGrade 계산을 그대로 씀(NOT_FOUND면 NOT_FOUND)', () => {
-    const untouched = field({ value: 'BUSAN', bbox: null, confidence: 0 });
-    const wire = toWireFieldValueIn(untouched, false);
-    expect(wire.grade).toBe('NOT_FOUND');
+  it('한 번도 검증 안 했으면 빈 배열 / null (대시보드가 "검증 전"으로 표시)', () => {
+    const out = toShipmentAndFields({ ...base, verdicts: [], prediction: null } as WireShipmentDetailResponse);
+    expect(out.verdicts).toEqual([]);
+    expect(out.prediction).toBeNull();
   });
 });

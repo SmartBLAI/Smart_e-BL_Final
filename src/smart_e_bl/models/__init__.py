@@ -18,6 +18,13 @@ from smart_e_bl.models.glossary import (
     GlossaryTerm,
     NormalizationSuggestion,
 )
+from smart_e_bl.models.outcomes import ShipmentOutcome
+from smart_e_bl.models.reality import (
+    RealityAlert,
+    RealityEvent,
+    RealityRun,
+    RealityWhitelist,
+)
 from smart_e_bl.models.reports import AuditLog, Report
 from smart_e_bl.models.rules import Rule, RuleCatalogVersion
 from smart_e_bl.models.tenancy import (
@@ -49,10 +56,15 @@ __all__ = [
     "ModelVersion",
     "NormalizationSuggestion",
     "PredictionFactor",
+    "RealityAlert",
+    "RealityEvent",
+    "RealityRun",
+    "RealityWhitelist",
     "Report",
     "Rule",
     "RuleCatalogVersion",
     "Shipment",
+    "ShipmentOutcome",
     "ShipmentStatusHistory",
     "Tenant",
     "Verdict",

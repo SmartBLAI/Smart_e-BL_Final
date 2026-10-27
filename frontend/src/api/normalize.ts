@@ -4,7 +4,7 @@
  * 화면은 이 함수들만 부르면 됩니다.
  */
 
-import { postJson } from './client';
+import { gatewayTenantAiPath, postJson } from './client';
 import { toBLPayload } from './adapters';
 import { toDocumentIn, toNormalizeView, toWireRejectReason, type NormalizeView } from './adaptersNormalize';
 import type {
@@ -22,7 +22,7 @@ import type { FieldValue, RejectReason } from '../types/domain';
 const DECIDED_BY = 'bl-copilot-web';
 
 export async function normalizeShipment(fields: FieldValue[], signal?: AbortSignal): Promise<NormalizeView> {
-  const res = await postJson<WireNormalizeResponse>('/normalize', { bl: toBLPayload(fields) }, signal);
+  const res = await postJson<WireNormalizeResponse>(gatewayTenantAiPath('normalize'), { bl: toBLPayload(fields) }, signal);
   return toNormalizeView(res.suggestions);
 }
 
@@ -39,12 +39,12 @@ export async function applySuggestion(
   signal?: AbortSignal,
 ): Promise<WireApplyResponse> {
   return postJson<WireApplyResponse>(
-    '/normalize/apply',
+    gatewayTenantAiPath('normalize/apply'),
     {
       documents: [toDocumentIn(fields)],
       suggestions: [original],
       // 'field'는 제안이 가리키는 자리 하나만, 'all'은 scope에 실린 다른
-      // 자리까지 서버가 같이 고칩니다 (backend/aiService/api/main.py의 ApplyRequest).
+      // 자리까지 서버가 같이 고칩니다 (ai/api/main.py의 ApplyRequest).
       scope: applyToAllInScope ? 'all' : 'field',
       decided_by: DECIDED_BY,
       decided_at: new Date().toISOString(),
@@ -59,7 +59,7 @@ export async function rejectSuggestion(
   signal?: AbortSignal,
 ): Promise<WireCorrection> {
   const res = await postJson<{ corrections: WireCorrection[] }>(
-    '/normalize/reject',
+    gatewayTenantAiPath('normalize/reject'),
     {
       suggestions: [original],
       reason: toWireRejectReason(reason),

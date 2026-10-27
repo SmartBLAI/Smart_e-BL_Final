@@ -91,16 +91,6 @@ export function daysUntil(isoDate: string, today: Date): number {
   return Math.round((target.getTime() - base.getTime()) / 86_400_000);
 }
 
-/** 근거 서류 수 — 필드들이 실제로 가리키는 서류 개수를 셉니다 (추정 아님) */
-export function countSourceDocuments(fields: FieldValue[]): number {
-  const docIds = new Set(
-    fields
-      .filter((field) => field.source_doc_id !== null && field.bbox !== null)
-      .map((field) => field.source_doc_id),
-  );
-  return docIds.size;
-}
-
 /**
  * 카드 상단·하단에 쓰는 짧은 날짜 형식 (예: 08-12 10:30).
  *

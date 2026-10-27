@@ -7,6 +7,8 @@
 
 import type { DefectPrediction, Verdict } from '../types/domain';
 
+import type { WireRealityView } from './wireReality';
+
 export interface WireShipmentListItem {
   shipment_id: string;
   status: 'DRAFT' | 'REVIEWING' | 'VERIFIED' | 'SUBMITTED' | 'MONITORING' | 'CLOSED';
@@ -20,6 +22,8 @@ export interface WireShipmentListItem {
 
 export interface WireShipmentListResponse {
   shipments: WireShipmentListItem[];
+  total?: number;
+  next?: number | null;
 }
 
 export interface WireFieldValueOut {
@@ -32,6 +36,7 @@ export interface WireFieldValueOut {
   bbox: [number, number, number, number] | null;
   extractor: 'rule' | 'ocr+llm' | 'json';
   conflict_flag: boolean;
+  grade?: 'CONFIRMED' | 'ADVISORY' | 'REQUIRED' | 'NOT_FOUND';
 }
 
 export interface WireDocumentOut {
@@ -110,4 +115,15 @@ export interface WireSaveVerificationRequest {
 
 export interface WireSaveVerificationResponse {
   status: WireShipmentListItem['status'];
+}
+
+/** GET /shipments/overview — 선적별 상세 + 현실 대조 뷰(= /reality 응답)를 한 번에 */
+export interface WireShipmentOverviewItem extends WireShipmentDetailResponse {
+  reality: WireRealityView;
+}
+
+export interface WireShipmentOverviewResponse {
+  shipments: WireShipmentOverviewItem[];
+  total: number;
+  next: number | null;
 }

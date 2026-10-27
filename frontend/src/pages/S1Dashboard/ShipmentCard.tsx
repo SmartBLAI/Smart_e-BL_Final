@@ -2,12 +2,10 @@ import { ArrowRight, ChevronRight, Clock, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { StatusBadge } from '../../components/StatusBadge';
-import { DataSourceNotice } from '../../components/DataSourceNotice';
-import { SHIPMENT_STATUS, STATUS_FLOW } from '../../constants/domain';
-import type { DefectPrediction, Verdict } from '../../types/domain';
+import { SHIPMENT_STATUS } from '../../constants/domain';
+import type { Verdict } from '../../types/domain';
 import type { ShipmentMockData } from '../../mocks/shipmentData';
-import { useVerify } from '../../api/useVerify';
-import { useDeleteShipment } from '../../shared/shipmentStore';
+import { useConfirmedFields, useDeleteShipment } from '../../shared/shipmentStore';
 import { CardFieldGrid } from './CardFieldGrid';
 import { CardRouteBand } from './CardRouteBand';
 import { CardVerdictBand } from './CardVerdictBand';
@@ -38,31 +36,19 @@ export function ShipmentCard({ data, now }: ShipmentCardProps) {
   const { shipment, fields, documents } = data;
   const statusMeta = SHIPMENT_STATUS[shipment.status];
 
-  // S4(검증 결과)와 같은 방식으로 aiService에 물어봅니다 — 카드가 보여주는
-  // 하자 확률·판정이 다른 화면과 다른 숫자를 보여주지 않도록 하기 위해서입니다.
-  // 실패하면(백엔드가 꺼져 있으면) 목데이터로 물러나되, DataSourceNotice로
-  // 어느 쪽인지 항상 밝힙니다 (규약 §2.4).
-  const verify = useVerify(fields, { shipmentId: shipment.shipment_id, documents });
-  const isLive = verify.status === 'ok';
-  const verdicts: Verdict[] = isLive ? verify.view.verdicts : data.verdicts;
-  const prediction: DefectPrediction | null = isLive ? verify.view.prediction : data.prediction;
-  const notice =
-    verify.status === 'loading' ? null : isLive ? (
-      <DataSourceNotice source="live" predictionModel={verify.view.predictionModel} />
-    ) : (
-      <DataSourceNotice source="mock" reason={verify.error.message} />
-    );
+  // 대시보드는 AI를 부르지 않습니다 — 카드를 열 때마다 /verify 가 돌면 감사 로그가
+  // 선적 수만큼 쌓입니다. 게이트웨이가 저장해 둔 마지막 검증 스냅샷(스토어)만 보여주고,
+  // 없으면 "검증 전"으로 둡니다. 검증은 S3·S4의 명시적 동작으로만 실행됩니다.
+  const { verdicts, prediction } = data;
 
-  // 아직 아무도 고치지 않은 상태의 건수 — 목록 화면에는 편집 상태가 없으므로
-  // 빈 객체를 넘깁니다. S3에서 쓰는 계산식을 그대로 재사용해 두 화면의
-  // "필수 확인 N건"이 어긋나지 않게 했습니다.
-  const requiredFieldCount = countRequiredFields(fields, {});
+  // 아직 안 풀린 필수 확인 건수 — 편집값은 S3 안에만 있으므로 비워 두고, S3에서
+  // "값 확인함"으로 확인한 필드는 스토어에서 받아 같은 계산식에 넣습니다.
+  const [confirmedFields] = useConfirmedFields(shipment.shipment_id);
+  const requiredFieldCount = countRequiredFields(fields, {}, confirmedFields);
 
   // 판정 띠가 "위반 0건"과 "아직 안 돌렸다"를 구분하는 데 쓰는 값입니다.
-  // 방금 aiService가 실제로 판정했거나(isLive), 선적 상태가 이미 VERIFIED
-  // 이상까지 올라갔으면 검증을 거친 것입니다.
-  const isVerified =
-    isLive || STATUS_FLOW.indexOf(shipment.status) >= STATUS_FLOW.indexOf('VERIFIED');
+  // 저장된 스냅샷(하자 확률)이 있어야 검증을 거친 것입니다.
+  const isVerified = prediction !== null;
 
   // P2-16: 시연 리허설 중 쌓인 테스트 선적을 지울 방법이 UI에 없었다.
   // 삭제는 되돌릴 수 없어서 window.confirm으로 한 번 더 확인한다.
@@ -182,8 +168,6 @@ export function ShipmentCard({ data, now }: ShipmentCardProps) {
         </span>
       </div>
 
-      {notice !== null && <div style={{ padding: '0 18px 10px' }}>{notice}</div>}
-
       <CardRouteBand
         fields={fields}
         loadedOnBoard={loadedOnBoardLabel(fields)}
@@ -191,7 +175,7 @@ export function ShipmentCard({ data, now }: ShipmentCardProps) {
         verdicts={verdicts}
       />
 
-      <CardFieldGrid shipment={shipment} fields={fields} now={now} />
+      <CardFieldGrid shipment={shipment} fields={fields} documentCount={documents.length} now={now} />
 
       <CardVerdictBand
         verdicts={verdicts}
@@ -228,6 +212,13 @@ export function ShipmentCard({ data, now }: ShipmentCardProps) {
             초안 편집
           </Link>
         )}
+        <Link
+          to={`/shipments/${shipment.shipment_id}`}
+          className="btn btn-secondary"
+          style={{ padding: '5px 13px', fontSize: 13 }}
+        >
+          운항 타임라인
+        </Link>
         <Link
           to={`/shipments/${shipment.shipment_id}/verdicts`}
           className="btn btn-primary"

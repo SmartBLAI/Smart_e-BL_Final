@@ -2,7 +2,6 @@ import type { ConfidenceGrade, FieldValue, Shipment } from '../../types/domain';
 import { GradeBadge } from '../../components/GradeBadge';
 import {
   NO_SOURCE_LABEL,
-  countSourceDocuments,
   daysUntil,
   gradeOf,
   joinValues,
@@ -13,6 +12,8 @@ import {
 interface CardFieldGridProps {
   shipment: Shipment;
   fields: FieldValue[];
+  /** 업로드된 서류 개수 (B/L·L/C 등 전부) */
+  documentCount: number;
   /** D-day 계산 기준 시각. 렌더 중에 new Date()를 부르지 않도록 부모가 넘겨줍니다 */
   now: Date;
 }
@@ -44,7 +45,7 @@ interface Cell {
  * 하자 확률은 여기 있다가 요약 띠(CardRouteBand)로 옮겼습니다. 다른 일곱 칸과
  * 같은 크기로 놓으니 카드에서 제일 중요한 값이 묻혔습니다.
  */
-export function CardFieldGrid({ shipment, fields, now }: CardFieldGridProps) {
+export function CardFieldGrid({ shipment, fields, documentCount, now }: CardFieldGridProps) {
   const cells: Cell[] = [
     { label: 'L/C 번호', value: shipment.lc_no },
     { label: '화물관리번호', value: shipment.cargo_control_no },
@@ -63,7 +64,7 @@ export function CardFieldGrid({ shipment, fields, now }: CardFieldGridProps) {
       value: joinValues(valueOf(fields, 'incoterms'), valueOf(fields, 'freight_terms')),
     },
     lcExpiryCell(shipment, now),
-    { label: '근거 서류', value: documentCountLabel(fields) },
+    { label: '근거 서류', value: documentCount === 0 ? null : `${documentCount}건` },
   ];
 
   return (
@@ -106,11 +107,6 @@ function lcExpiryCell(shipment: Shipment, now: Date): Cell {
             colorVar: remaining <= 7 ? '--severity-critical' : '--severity-warning',
           },
   };
-}
-
-function documentCountLabel(fields: FieldValue[]): string | null {
-  const count = countSourceDocuments(fields);
-  return count === 0 ? null : `${count}건`;
 }
 
 function GridCell({ cell }: { cell: Cell }) {

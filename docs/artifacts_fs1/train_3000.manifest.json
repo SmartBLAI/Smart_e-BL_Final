@@ -1,9 +1,0 @@
-{
-  "seed": 42,
-  "base_count": 1000,
-  "variants_per_base": 3,
-  "total_rows": 3000,
-  "defect_rate": 0.69,
-  "reviewer_backend": "constant_table",
-  "claude_fallback_count": 0
-}

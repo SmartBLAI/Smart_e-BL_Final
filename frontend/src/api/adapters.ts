@@ -80,7 +80,7 @@ function toVerdict(
     // 순번 때문에 겹치지 않습니다 (React 목록의 key 로 쓰입니다).
     verdict_id: `${v.rule_id}#${index}`,
     rule_id: v.rule_id,
-    target_fields: v.fields,
+    target_fields: v.fields.map(toScreenFieldName),
     result: 'VIOLATION',
     severity: SEVERITY_MAP[v.severity],
     message: v.message,
@@ -136,6 +136,18 @@ export function toVerifyView(
 const FIELD_NAME_TO_RULE_NAME: Record<string, string> = {
   shipped_on_board_date: 'on_board_date',
 };
+
+/** 룰 카탈로그 어휘 → 화면 어휘 (위 매핑의 반대 방향) — "고치러 가기" ?focus= 에 씁니다 */
+const RULE_NAME_TO_FIELD_NAME: Record<string, string> = {
+  on_board_date: 'shipped_on_board_date',
+  vessel: 'vessel_voyage',
+  voyage_no: 'vessel_voyage',
+};
+
+/** 룰이 돌려준 필드 이름을 화면 필드 이름으로 바꿉니다. 모르는 이름은 그대로 */
+export function toScreenFieldName(name: string): string {
+  return RULE_NAME_TO_FIELD_NAME[name] ?? name;
+}
 
 /**
  * 화면의 필드 목록 → 백엔드 `/verify` 가 받는 `bl` 객체.

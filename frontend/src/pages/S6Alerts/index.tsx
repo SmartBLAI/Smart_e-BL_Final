@@ -1,18 +1,19 @@
 import { PauseCircle } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { EmptyState } from '../../components/EmptyState';
 import { PageContainer } from '../../components/PageContainer';
-import { StatusBadge } from '../../components/StatusBadge';
-import { bySeverity } from '../../constants/domain';
-import type { ShipmentMockData } from '../../mocks/shipmentData';
-import { useShipmentList } from '../../shared/shipmentStore';
-import type { Alert } from '../../types/domain';
+import { isDemoFixtures, useRealityActions, useShipmentList } from '../../shared/shipmentStore';
+import { filterBySeverity, sortAlerts } from '../../shared/realityView';
+import type { Severity } from '../../types/domain';
 import { AlertCard } from './AlertCard';
 import { DeferredCard } from './DeferredCard';
+import { RuleCoverageSection } from './RuleCoverageSection';
+import { SeverityFilterBar } from './SeverityFilterBar';
+import { ShipmentGroupHeader } from './ShipmentGroupHeader';
 
-/** 미확인(acknowledged: false)이 먼저, 그 안에서는 심각도 순(위반 → 주의 → 참고) */
-function byUnacknowledgedThenSeverity(a: Alert, b: Alert): number {
-  if (a.acknowledged !== b.acknowledged) return a.acknowledged ? 1 : -1;
-  return bySeverity(a, b);
+/** URL의 ?severity= 값이 유효한 Severity인지 확인. 이상한 값이면 무시(=전체) */
+function parseSeverityParam(value: string | null): Severity | null {
+  return value === 'Critical' || value === 'Warning' || value === 'Info' ? value : null;
 }
 
 /**
@@ -24,16 +25,51 @@ function byUnacknowledgedThenSeverity(a: Alert, b: Alert): number {
  * 여러 선적을 한눈에 훑는 자리입니다.
  */
 export function S6Alerts() {
-  // 목록 순서는 S1과 같은 mockShipments를 따릅니다 — 두 화면의 선적 순서가
+  // 화면전이_정의.md §6 — S4·S6 공통 규칙인 ?severity= 필터. S6은 이 화면
+  // 안에서만 구현합니다(S4는 T4 담당 범위 밖).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const severityFilter = parseSeverityParam(searchParams.get('severity'));
+  const { acknowledgeAlert, whitelistAlert, alertsError } = useRealityActions();
+  const canAct = !isDemoFixtures();
+
+  function handleSeverityChange(severity: Severity | null) {
+    const next = new URLSearchParams(searchParams);
+    if (severity === null) {
+      next.delete('severity');
+    } else {
+      next.set('severity', severity);
+    }
+    setSearchParams(next);
+  }
+
+  // 목록 순서는 S1과 같은 useShipmentList를 따릅니다 — 두 화면의 선적 순서가
   // 다르면 같은 데이터인데 다른 목록처럼 보입니다.
+  // 여기 담기는 alerts는 필터 없이 전부입니다 — 버튼 건수·"필터 해제 시 N건"
+  // 문구가 필터된 값이 아니라 전체 값을 봐야 하기 때문입니다.
   const groups = useShipmentList().map((data) => ({
       data,
-      alerts: [...data.alerts].sort(byUnacknowledgedThenSeverity),
-      // 판정 보류는 아래 별도 구역에서 다룹니다
+      alerts: sortAlerts(data.alerts),
+      // 판정 보류는 아래 별도 구역에서 다룹니다 (심각도 필터의 영향을 받지 않음)
       deferred: data.verdicts.filter((verdict) => verdict.result === 'DEFERRED'),
   }));
 
-  const withAlerts = groups.filter((group) => group.alerts.length > 0);
+  const allAlerts = groups.flatMap((group) => group.alerts);
+  const totalAlertCount = allAlerts.length;
+  const severityCounts: Record<Severity, number> = { Critical: 0, Warning: 0, Info: 0 };
+  allAlerts.forEach((alert) => {
+    severityCounts[alert.severity] += 1;
+  });
+
+  // 화면에 실제로 뿌릴 목록 — 필터가 있으면 여기서만 걸러냅니다
+  const filteredGroups =
+    severityFilter === null
+      ? groups
+      : groups.map((group) => ({
+          ...group,
+          alerts: filterBySeverity(group.alerts, severityFilter),
+        }));
+
+  const withAlerts = filteredGroups.filter((group) => group.alerts.length > 0);
   const withDeferred = groups.filter((group) => group.deferred.length > 0);
   const unacknowledged = withAlerts
     .flatMap((group) => group.alerts)
@@ -51,9 +87,9 @@ export function S6Alerts() {
           textAlign: 'left',
         }}
       >
-        <h1 style={{ margin: 0, fontSize: 22 }}>경보 센터</h1>
+        <h1 className="page-title">경보 센터</h1>
         <span style={{ fontSize: 12.5, color: 'var(--text-secondary)', wordBreak: 'keep-all' }}>
-          서류와 실제 운송 기록이 어긋난 건 — 미확인 먼저, 그 안에서 심각도 순
+          서류 기재와 울산항 선박 운항 관제 기록이 어긋난 건 — 미확인 먼저, 그 안에서 심각도 순
         </span>
         <div style={{ flex: 1, minWidth: 'var(--space-2)' }} />
         <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>
@@ -61,10 +97,31 @@ export function S6Alerts() {
         </span>
       </header>
 
+      <div style={{ marginBottom: 'var(--space-4)' }}>
+        <SeverityFilterBar
+          counts={severityCounts}
+          total={totalAlertCount}
+          active={severityFilter}
+          onChange={handleSeverityChange}
+        />
+      </div>
+
+      {alertsError && (
+        <p role="alert" style={{ color: 'var(--severity-warning)', fontSize: 13, textAlign: 'left' }}>
+          경보 목록을 불러오지 못했습니다 — 아래 "경보 없음"은 이상 없음이 아니라 데이터 부족입니다.
+        </p>
+      )}
+
       {withAlerts.length === 0 ? (
-        // 어댑터가 아직 안 붙은 것과 "정말 어긋난 게 없는 것"은 다르지만, 어느
-        // 쪽이든 경보를 지어내지는 않습니다 (§5.6)
-        <EmptyState message="지금 올라온 경보가 없습니다." />
+        // 필터로 가려진 0건과 진짜 0건은 다른 문장입니다 — 전자는 필터를
+        // 해제하면 몇 건이 있는지까지 알려줍니다.
+        <EmptyState
+          message={
+            totalAlertCount === 0
+              ? '지금 올라온 경보가 없습니다.'
+              : `이 심각도의 경보가 없습니다 — 필터를 해제하면 ${totalAlertCount}건이 있습니다.`
+          }
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           {withAlerts.map(({ data, alerts }) => (
@@ -78,6 +135,14 @@ export function S6Alerts() {
                   fields={data.fields}
                   realityEvents={data.realityEvents}
                   suggestions={data.suggestions}
+                  explanation={data.explanations[alert.alert_id] ?? null}
+                  callSign={data.vesselMatch?.call_sign ?? null}
+                  onAcknowledge={canAct ? () => acknowledgeAlert(alert) : undefined}
+                  onWhitelist={
+                    canAct
+                      ? (reason) => whitelistAlert(alert, reason, data.vesselMatch?.call_sign ?? null)
+                      : undefined
+                  }
                 />
               ))}
             </section>
@@ -97,7 +162,7 @@ export function S6Alerts() {
             }}
           >
             <PauseCircle size={16} color="var(--text-muted)" aria-hidden="true" />
-            <h2 style={{ margin: 0, fontSize: 15 }}>
+            <h2 className="section-title" style={{ margin: 0 }}>
               판정 보류 {withDeferred.reduce((sum, group) => sum + group.deferred.length, 0)}건
             </h2>
             <span style={{ fontSize: 12.5, color: 'var(--text-secondary)', wordBreak: 'keep-all' }}>
@@ -123,41 +188,11 @@ export function S6Alerts() {
           </div>
         </section>
       )}
+
+      {/* 판정 범위 공개 구역 — 판정 보류 구역과 나란히, 그 아래 둡니다.
+          판정 보류(위)는 "이 판정이 왜 아직 안 끝났나"고, 이 구역은
+          "이 룰을 애초에 실행할 수 있나"라 성격이 다릅니다. */}
+      <RuleCoverageSection />
     </PageContainer>
-  );
-}
-
-/** 선적별 그룹 헤더 — B/L 번호 · 상태 뱃지 · L/C 번호 */
-function ShipmentGroupHeader({ data, count }: { data: ShipmentMockData; count: string }) {
-  const { shipment } = data;
-
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--space-2)',
-        flexWrap: 'wrap',
-        padding: '12px 18px',
-        border: '1px solid var(--border-default)',
-        // 모서리는 .alert-group이 정합니다 — 여기서 인라인으로 주면 첫/마지막
-        // 카드만 깎는 규칙을 덮어버립니다
-        backgroundColor: 'var(--bg-card)',
-      }}
-    >
-      {shipment.bl_no !== null ? (
-        <strong style={{ fontSize: 15.5, letterSpacing: '-0.2px' }}>{shipment.bl_no}</strong>
-      ) : (
-        <span style={{ fontSize: 15, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-          B/L 번호 미발급
-        </span>
-      )}
-      <StatusBadge status={shipment.status} />
-      <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
-        L/C {shipment.lc_no ?? '-'}
-      </span>
-      <div style={{ flex: 1, minWidth: 'var(--space-2)' }} />
-      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{count}</span>
-    </div>
   );
 }

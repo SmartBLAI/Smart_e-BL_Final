@@ -37,15 +37,11 @@ curl -sf -o /dev/null "http://127.0.0.1:8001/api/v1/shipments?limit=1" -H "X-Ten
 curl -sf -o /dev/null http://localhost:8080/ && ok "프론트 :8080" || bad "프론트 응답 없음"
 curl -sf -o /dev/null "http://localhost:8080/gw-api/api/v1/shipments?limit=1" -H "X-Tenant-Id: demo" && ok "프론트 → 게이트웨이 프록시" || bad "/gw-api 프록시 실패"
 
-echo "[4] 브라우저가 aiService 를 직접 부를 수 있는지 (CORS + 토큰)"
-allow=$(curl -s -D- -o /dev/null -X OPTIONS http://localhost:5050/verify \
-  -H "Origin: http://localhost:8080" -H "Access-Control-Request-Method: POST" \
-  -H "Access-Control-Request-Headers: content-type,x-internal-token" \
-  | tr -d '\r' | awk -F': ' 'tolower($1)=="access-control-allow-origin"{print $2}')
-[ "$allow" = "http://localhost:8080" ] && ok "CORS 허용: $allow" || bad "CORS preflight 실패 (받은 값: '${allow:-없음}')"
+echo "[4] 브라우저는 게이트웨이만 부른다 (aiService 는 루프백 전용)"
+bind=$(docker compose port ai-service 5000 2>/dev/null)
+case "$bind" in 127.0.0.1:*) ok "aiService 포트 바인딩: $bind";; *) bad "aiService 가 루프백이 아닌 곳에 노출됨: '${bind:-없음}'";; esac
 tok_env=$(grep -E '^AI_INTERNAL_TOKEN=' .env | cut -d= -f2-)
-tok_vite=$(grep -E '^VITE_AI_INTERNAL_TOKEN=' .env | cut -d= -f2-)
-[ -n "$tok_env" ] && [ "$tok_env" = "$tok_vite" ] && ok "X-Internal-Token 일치" || bad "AI_INTERNAL_TOKEN 과 VITE_AI_INTERNAL_TOKEN 이 다릅니다 (프론트 호출이 전부 401)"
+[ -n "$tok_env" ] && ok "AI_INTERNAL_TOKEN 설정됨 (게이트웨이가 사용)" || bad "AI_INTERNAL_TOKEN 이 비었습니다"
 
 echo "[5] 촬영용 데이터"
 [ -f "docs/frontend/샘플_B_L_SHP-2026-0812-001.pdf" ] && ok "샘플 B/L" || bad "샘플 B/L 없음"

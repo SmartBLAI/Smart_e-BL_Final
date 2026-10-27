@@ -1,14 +1,28 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { buildDraftDataFromFields, type ShipmentMockData } from '../mocks/shipmentData';
 import {
+  buildDraftDataFromFields,
+  mockDataByShipment,
+  type ShipmentMockData,
+} from '../mocks/shipmentData';
+import {
+  confirmField as confirmFieldApi,
   createDraftWithFields,
   deleteShipment,
-  getShipment,
-  listShipments,
+  getShipmentsOverview,
   saveFields as saveFieldsApi,
 } from '../api/shipment';
-import type { DefectPrediction, FieldValue, Shipment, Verdict } from '../types/domain';
+import {
+  acknowledgeAlert as acknowledgeAlertApi,
+  addWhitelist,
+  listAlerts,
+  runRealityCheck as runRealityCheckApi,
+} from '../api/reality';
+import type { RealityView } from '../api/adaptersReality';
+import { replaceAlert } from './realityView';
+import { replaceField, withEditedValue } from './fieldEdit';
+import type { ConfirmedFields } from './shipmentStats';
+import type { Alert, DefectPrediction, FieldValue, Shipment, Verdict } from '../types/domain';
 
 /**
  * 화면이 선적을 읽는 유일한 통로.
@@ -58,21 +72,80 @@ interface ShipmentStoreValue {
     prediction: DefectPrediction | null,
   ) => void;
   /**
-   * 필드값을 게이트웨이에 저장하고, 성공하면 화면 목록의 fields도 같이
-   * 갱신합니다 — VerifyBar가 검증 실행 직전에 F2 교정 승인값을 영속시키는 데 씁니다.
+   * 필드 1건의 값을 고칩니다 — 화면 목록을 먼저 바꾸고(S1·S4·S5·S7 즉시 반영)
+   * 게이트웨이에 저장합니다. 실패하면 원래 필드로 되돌리고 던집니다. 데모(픽스처)
+   * 모드는 로컬만 바꿉니다. 고친다고 확정되지는 않습니다(확정은 confirmField).
    */
-  saveFields: (
+  editField: (
     shipmentId: string,
-    documentId: string,
-    page: number,
-    fields: FieldValue[],
-    editedFieldNames?: ReadonlySet<string>,
+    documentId: string | null,
+    fieldName: string,
+    value: string | null,
   ) => Promise<void>;
   /**
    * 선적을 게이트웨이에서 지우고 목록에서도 뺍니다 — 시연 리허설 중 쌓인
    * 테스트 데이터를 치울 방법이 UI에 없었습니다(P2-16).
    */
   remove: (shipmentId: string) => Promise<void>;
+  /** 선적별 "값 확인함" 표시 — 화면 이동으로 사라지지 않게 스토어가 들고 있습니다 */
+  confirmed: Record<string, ConfirmedFields>;
+  /** 낙관적으로 표시하고 서버에 저장 — 실패하면 표시를 되돌리고 던집니다. 데모 모드는 로컬만 */
+  confirmField: (shipmentId: string, fieldName: string) => Promise<void>;
+  /** /alerts 목록을 못 불러왔는지 — 빈 목록을 "경보 없음"으로 읽지 않게 S6이 밝힙니다 */
+  alertsError: boolean;
+  /** 현실 대조 실행(POST check) 후 그 선적의 S5·S6 데이터를 갱신. 실패하면 던집니다 */
+  runRealityCheck: (shipmentId: string) => Promise<void>;
+  acknowledgeAlert: (alert: Alert) => Promise<void>;
+  /** 정상 관행 등록 — 같은 룰의 다른 경보도 서버에서 바뀌므로 /alerts 를 다시 받습니다 */
+  whitelistAlert: (alert: Alert, reason: string, callSign: string | null) => Promise<void>;
+}
+
+function withReality(data: ShipmentMockData, view: RealityView): ShipmentMockData {
+  return {
+    ...data,
+    realityEvents: view.realityEvents,
+    alerts: view.alerts,
+    adapterStatus: view.adapterStatus,
+    vesselMatch: view.vesselMatch,
+    realitySkipped: view.skipped,
+  };
+}
+
+/** 선적별로 /alerts 목록을 나눠 담습니다 */
+function withAlerts(list: ShipmentMockData[], alerts: Alert[]): ShipmentMockData[] {
+  return list.map((d) => ({
+    ...d,
+    alerts: alerts.filter((a) => a.shipment_id === d.shipment.shipment_id),
+  }));
+}
+
+/**
+ * 목업 시연 모드 — 주소 뒤에 `?demo=1`을 붙이면 게이트웨이 대신 픽스처를 씁니다.
+ *
+ * 2026-08-19에 "픽스처를 대시보드에서 뺀다"고 정한 결정은 그대로입니다 —
+ * 기본값은 여전히 게이트웨이이고, 이 플래그를 켜야만 픽스처가 나옵니다.
+ *
+ * 플래그를 만든 이유: F5(정정 영향분석)·F6(현실 대조)·F7(판정 설명)은 아직
+ * 게이트웨이가 계산해주지 않아서(buildDraftDataFromFields가 빈 값으로 채웁니다)
+ * 픽스처 말고는 보여줄 데이터가 없습니다. 그래서 이 세 기능의 화면을 사람이
+ * 열어볼 방법 자체가 없었습니다. 이건 그 리뷰용 통로입니다.
+ *
+ * sessionStorage에 남기는 이유: `?demo=1`은 화면을 옮기면(Link) 주소에서
+ * 사라지는데, 그러면 대시보드에서 경보 센터로 넘어가는 순간 데이터가 없어집니다.
+ * `?demo=0`으로 들어오면 끕니다. 탭을 닫으면 같이 사라집니다.
+ */
+const DEMO_KEY = 'blcopilot.demoFixtures';
+
+function readDemoFlag(): boolean {
+  const param = new URLSearchParams(window.location.search).get('demo');
+  if (param === '1') sessionStorage.setItem(DEMO_KEY, '1');
+  if (param === '0') sessionStorage.removeItem(DEMO_KEY);
+  return sessionStorage.getItem(DEMO_KEY) === '1';
+}
+
+/** 지금 픽스처 모드인지 — 화면이 "목데이터입니다"를 밝히는 데 씁니다 */
+export function isDemoFixtures(): boolean {
+  return sessionStorage.getItem(DEMO_KEY) === '1';
 }
 
 const ShipmentStoreContext = createContext<ShipmentStoreValue | null>(null);
@@ -80,25 +153,57 @@ const ShipmentStoreContext = createContext<ShipmentStoreValue | null>(null);
 export function ShipmentStoreProvider({ children }: { children: ReactNode }) {
   const [createdData, setCreatedData] = useState<ShipmentMockData[]>([]);
   const [status, setLoadStatus] = useState<ShipmentStoreStatus>('loading');
+  const [alertsError, setAlertsError] = useState(false);
+  const [confirmed, setConfirmed] = useState<Record<string, ConfirmedFields>>({});
+
+  const confirmField = useCallback(async (shipmentId: string, fieldName: string) => {
+    setConfirmed((prev) => ({
+      ...prev,
+      [shipmentId]: { ...prev[shipmentId], [fieldName]: true },
+    }));
+    if (isDemoFixtures()) return;
+    try {
+      await confirmFieldApi(shipmentId, fieldName);
+    } catch (err) {
+      setConfirmed((prev) => {
+        const { [fieldName]: _undone, ...rest } = prev[shipmentId] ?? {};
+        return { ...prev, [shipmentId]: rest };
+      });
+      throw err;
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
 
+    // 픽스처 모드면 게이트웨이를 아예 부르지 않습니다 — 502가 나든 말든
+    // 보여줄 데이터는 픽스처이므로, 실패를 기다릴 이유가 없습니다.
+    if (readDemoFlag()) {
+      setCreatedData(Object.values(mockDataByShipment));
+      setLoadStatus('ok');
+      return;
+    }
+
     (async () => {
       try {
-        const shipments = await listShipments();
-        // ponytail: 선적마다 상세 조회를 한 번씩 더 합니다(N+1) — 목록 응답에
-        // 필드값까지 담겨 있지 않아서입니다. 지금은 부트스트랩 테넌트 하나뿐이라
-        // 선적 수가 적어 문제없고, 늘어나면 목록 응답에 필드도 같이 주도록
-        // 게이트웨이를 고칠 것.
-        const details = await Promise.all(shipments.map((s) => getShipment(s.shipment_id)));
+        // 선적 목록·상세·현실 대조는 개요 API 한 번으로, 경보는 따로 — 요청 수는 선적 수와 무관합니다.
+        const [overview, globalAlerts] = await Promise.all([
+          getShipmentsOverview(),
+          listAlerts().catch((err) => {
+            console.error('경보 목록을 불러오지 못했습니다', err);
+            return null;
+          }),
+        ]);
         if (cancelled) return;
         // 최신순(list는 이미 created_at 내림차순으로 옴)
-        setCreatedData(
-          details.map(({ shipment, fields, documents, verdicts, prediction }) =>
+        const built = overview.map(({ shipment, fields, documents, verdicts, prediction, reality }) =>
+          withReality(
             buildDraftDataFromFields(shipment, fields, documents, verdicts, prediction),
+            reality,
           ),
         );
+        setCreatedData(globalAlerts ? withAlerts(built, globalAlerts) : built);
+        setAlertsError(globalAlerts === null);
         setLoadStatus('ok');
       } catch (err) {
         // 픽스처는 대시보드에서 뺐으므로 여기서 물러날 곳이 없습니다 — 목록은
@@ -147,18 +252,31 @@ export function ShipmentStoreProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const saveFields = useCallback(
+  // 롤백 때 "고치기 전 필드"를 찾으려고 최신 목록을 ref로도 들고 있습니다
+  const createdDataRef = useRef(createdData);
+  createdDataRef.current = createdData;
+
+  const editField = useCallback(
     async (
       shipmentId: string,
-      documentId: string,
-      page: number,
-      fields: FieldValue[],
-      editedFieldNames?: ReadonlySet<string>,
+      documentId: string | null,
+      fieldName: string,
+      value: string | null,
     ): Promise<void> => {
-      await saveFieldsApi(shipmentId, documentId, page, fields, editedFieldNames);
-      setCreatedData((prev) =>
-        prev.map((data) => (data.shipment.shipment_id === shipmentId ? { ...data, fields } : data)),
-      );
+      const before = createdDataRef.current
+        .find((d) => d.shipment.shipment_id === shipmentId)
+        ?.fields.find((f) => f.field_name === fieldName);
+      if (before === undefined) return;
+      const after = withEditedValue(before, value);
+      setCreatedData((prev) => replaceField(prev, shipmentId, after));
+      if (isDemoFixtures()) return;
+      try {
+        if (documentId === null) throw new Error('저장할 B/L 서류가 없습니다');
+        await saveFieldsApi(shipmentId, documentId, before.page ?? 1, [after]);
+      } catch (err) {
+        setCreatedData((prev) => replaceField(prev, shipmentId, before));
+        throw err;
+      }
     },
     [],
   );
@@ -167,6 +285,34 @@ export function ShipmentStoreProvider({ children }: { children: ReactNode }) {
     await deleteShipment(shipmentId);
     setCreatedData((prev) => prev.filter((data) => data.shipment.shipment_id !== shipmentId));
   }, []);
+
+  const runRealityCheck = useCallback(async (shipmentId: string): Promise<void> => {
+    const view = await runRealityCheckApi(shipmentId);
+    setCreatedData((prev) =>
+      prev.map((d) => (d.shipment.shipment_id === shipmentId ? withReality(d, view) : d)),
+    );
+  }, []);
+
+  const acknowledgeAlert = useCallback(async (alert: Alert): Promise<void> => {
+    const updated = await acknowledgeAlertApi(alert.alert_id);
+    setCreatedData((prev) =>
+      prev.map((d) =>
+        d.shipment.shipment_id === updated.shipment_id
+          ? { ...d, alerts: replaceAlert(d.alerts, updated) }
+          : d,
+      ),
+    );
+  }, []);
+
+  const whitelistAlert = useCallback(
+    async (alert: Alert, reason: string, callSign: string | null): Promise<void> => {
+      if (!alert.rule_id) throw new Error('룰 정보가 없는 경보입니다');
+      await addWhitelist({ rule_id: alert.rule_id, call_sign: callSign, reason });
+      const all = await listAlerts();
+      setCreatedData((prev) => withAlerts(prev, all));
+    },
+    [],
+  );
 
   const value = useMemo<ShipmentStoreValue>(() => {
     const list = createdData;
@@ -180,10 +326,19 @@ export function ShipmentStoreProvider({ children }: { children: ReactNode }) {
           : list.find((data) => data.shipment.shipment_id === shipmentId) ?? null,
       createDraft,
       recordVerification,
-      saveFields,
+      editField,
       remove,
+      confirmed,
+      confirmField,
+      alertsError,
+      runRealityCheck,
+      acknowledgeAlert,
+      whitelistAlert,
     };
-  }, [createdData, status, createDraft, recordVerification, saveFields, remove]);
+  }, [
+    createdData, status, createDraft, recordVerification, editField, remove,
+    confirmed, confirmField, alertsError, runRealityCheck, acknowledgeAlert, whitelistAlert,
+  ]);
 
   return <ShipmentStoreContext.Provider value={value}>{children}</ShipmentStoreContext.Provider>;
 }
@@ -234,18 +389,32 @@ export function useRecordVerification(): (
   return useStore().recordVerification;
 }
 
-/** 필드값을 게이트웨이에 저장하고 화면 목록에 반영합니다 — VerifyBar가 검증 실행 직전에 씁니다 */
-export function useSaveFields(): (
-  shipmentId: string,
-  documentId: string,
-  page: number,
-  fields: FieldValue[],
-  editedFieldNames?: ReadonlySet<string>,
-) => Promise<void> {
-  return useStore().saveFields;
+/** 필드 1건 즉시 저장(낙관적 갱신 + 실패 시 롤백) — S3 인라인 편집·교정 승인이 씁니다 */
+export function useEditField(): ShipmentStoreValue['editField'] {
+  return useStore().editField;
+}
+
+/** F6 — S5 "현실 대조 실행"·S6 경보 처리. 데모(픽스처) 모드에선 화면이 버튼을 숨깁니다 */
+export function useRealityActions() {
+  const { runRealityCheck, acknowledgeAlert, whitelistAlert, alertsError } = useStore();
+  return { runRealityCheck, acknowledgeAlert, whitelistAlert, alertsError };
 }
 
 /** 선적 삭제 — S1 대시보드 카드의 "삭제" 버튼이 씁니다 */
 export function useDeleteShipment(): (shipmentId: string) => Promise<void> {
   return useStore().remove;
+}
+
+const NO_CONFIRMED: ConfirmedFields = {};
+
+/**
+ * 선적의 "값 확인함" 표시와 확인 핸들러 — S3(편집)와 S1(필수 확인 건수)이 같은
+ * 출처를 봐서 두 화면 숫자가 어긋나지 않게 합니다.
+ */
+export function useConfirmedFields(
+  shipmentId: string | undefined,
+): [ConfirmedFields, (fieldName: string) => Promise<void>] {
+  const { confirmed, confirmField } = useStore();
+  const mine = (shipmentId !== undefined && confirmed[shipmentId]) || NO_CONFIRMED;
+  return [mine, async (fieldName) => { if (shipmentId !== undefined) await confirmField(shipmentId, fieldName); }];
 }

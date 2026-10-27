@@ -30,13 +30,13 @@ describe('extractDraft 확장자 라우팅', () => {
   it('.pdf는 /extract/pdf로, page는 0부터 받아 1부터로 맞춰 보냄', async () => {
     postForm.mockClear();
     await extractDraft(fileNamed('bl.pdf'), { page: 0 });
-    expect(postForm).toHaveBeenCalledWith('/extract/pdf', expect.any(FormData), { page: 0 }, undefined);
+    expect(postForm).toHaveBeenCalledWith('/api/v1/ai/extract/pdf', expect.any(FormData), { page: 0 }, undefined);
   });
 
   it('.jpg/.png 등 이미지는 /extract로, page 파라미터 없이 보냄', async () => {
     postForm.mockClear();
     await extractDraft(fileNamed('scan.png'));
-    expect(postForm).toHaveBeenCalledWith('/extract', expect.any(FormData), undefined, undefined);
+    expect(postForm).toHaveBeenCalledWith('/api/v1/ai/extract', expect.any(FormData), undefined, undefined);
   });
 
   it('.txt처럼 지원 목록에 있어도 추출 엔드포인트가 없는 확장자는 거절', async () => {
@@ -50,6 +50,6 @@ describe('extractDraft 확장자 라우팅', () => {
   it('대문자 확장자도 소문자로 취급 (.PDF)', async () => {
     postForm.mockClear();
     await extractDraft(fileNamed('bl.PDF'));
-    expect(postForm).toHaveBeenCalledWith('/extract/pdf', expect.any(FormData), { page: 0 }, undefined);
+    expect(postForm).toHaveBeenCalledWith('/api/v1/ai/extract/pdf', expect.any(FormData), { page: 0 }, undefined);
   });
 });

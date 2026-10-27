@@ -13,9 +13,8 @@
  * 자동으로 적용하지 않습니다.
  */
 
-// 파일 읽기는 게이트웨이, MT700 파싱은 aiService — postJson 의 기본 base URL 이
-// aiService 라서 parseMt700 은 base URL 을 따로 안 넘깁니다.
-import { getText, postJson, GATEWAY_API_BASE_URL } from './client';
+// 파일 읽기·MT700 파싱 모두 게이트웨이를 거칩니다 (파싱은 게이트웨이가 aiService 로 중계).
+import { getText, gatewayTenantAiPath, postJson, GATEWAY_API_BASE_URL } from './client';
 import type { DocumentMeta } from '../types/domain';
 
 /**
@@ -37,7 +36,7 @@ export interface LcParse {
 
 /** MT700 전문 원문 → L/C 조건. 태그를 하나도 못 찾으면 400 이 옵니다. */
 export function parseMt700(text: string, signal?: AbortSignal): Promise<LcParse> {
-  return postJson<LcParse>('/lc/mt700', { text }, signal);
+  return postJson<LcParse>(gatewayTenantAiPath('lc/mt700'), { text }, signal);
 }
 
 /**

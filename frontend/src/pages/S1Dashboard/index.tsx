@@ -27,14 +27,8 @@ export function S1Dashboard() {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <h1
-            style={{
-              margin: 0,
-              fontSize: 25,
-              fontWeight: 600,
-              lineHeight: 1.2,
-              letterSpacing: '-0.6px',
-              color: 'var(--brand-primary)',
-            }}
+            className="page-title"
+            style={{ color: 'var(--brand-primary)' }}
           >
             선적
           </h1>

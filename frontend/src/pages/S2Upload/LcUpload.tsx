@@ -59,7 +59,10 @@ export function LcUpload({ file, onChange, disabled }: LcUploadProps) {
     onChange(null);
   }
 
-  const unmappedTags = parse ? Object.keys(parse.unmapped) : [];
+  const notes = parse?.notes ?? [];
+  const isReadNote = (note: string) => note.endsWith('를 읽었습니다.');
+  const unusedNotes = notes.filter((note) => !isReadNote(note));
+  const readNotes = notes.filter(isReadNote);
 
   return (
     <section
@@ -128,21 +131,27 @@ export function LcUpload({ file, onChange, disabled }: LcUploadProps) {
 
           {/* 못 읽은 것을 숨기지 않습니다 — 무엇이 대조에서 빠졌는지가
               대조 결과만큼 중요합니다 (ruleEngine/mt700.py 주석). */}
-          {(parse.notes.length > 0 || unmappedTags.length > 0) && (
+          {/* 대조에서 빠진 태그(unmapped)는 서버가 이미 notes 에 문장으로 넣어 보내므로
+              notes 만 보여줍니다 — 둘 다 그리면 같은 태그가 두 번 나옵니다. */}
+          {/* notes 에는 "어디서 무엇을 읽었다"는 안내(…를 읽었습니다)도 섞여 옵니다 — 못 쓴 항목으로
+              세면 건수가 부풀어서, 읽은 결과는 아래에 따로 보여줍니다. */}
+          {unusedNotes.length > 0 && (
             <details style={{ marginTop: 'var(--space-2)', color: 'var(--text-secondary)' }}>
               <summary style={{ cursor: 'pointer' }}>
-                검증에 쓰지 못한 항목 {parse.notes.length + unmappedTags.length}건
+                검증에 쓰지 못한 항목 {unusedNotes.length}건
               </summary>
               <ul style={{ margin: 'var(--space-2) 0 0', paddingLeft: '1.2em' }}>
-                {parse.notes.map((note) => (
+                {unusedNotes.map((note) => (
                   <li key={note}>{note}</li>
-                ))}
-                {unmappedTags.map((tag) => (
-                  <li key={tag}>:{tag}: 는 대조 조건으로 옮기지 않았습니다.</li>
                 ))}
               </ul>
             </details>
           )}
+          {readNotes.map((note) => (
+            <p key={note} style={{ margin: 'var(--space-1) 0 0', color: 'var(--text-secondary)' }}>
+              {note}
+            </p>
+          ))}
         </div>
       )}
     </section>

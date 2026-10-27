@@ -1,9 +1,9 @@
 /**
  * F4 리포트 — 백엔드 `POST /report`·`POST /report/pdf` 가 실제로 주고받는 JSON 모양.
  *
- * 근거: `backend/aiService/report/model.py`의 `Report.to_dict()` (필드명 1:1 확인),
- *       `backend/aiService/ruleEngine/deadline.py`의 `PresentationDeadline.to_dict()`,
- *       `backend/aiService/api/main.py`의 `ReportRequest`(`VerifyRequest` + `submitted_documents`).
+ * 근거: `ai/f4_report/model.py`의 `Report.to_dict()` (필드명 1:1 확인),
+ *       `ai/f3_rules/deadline.py`의 `PresentationDeadline.to_dict()`,
+ *       `ai/api/main.py`의 `ReportRequest`(`VerifyRequest` + `submitted_documents`).
  *       실제 `curl -X POST localhost:5050/report ...` 응답으로도 확인했습니다.
  */
 

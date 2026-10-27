@@ -16,6 +16,15 @@ import type {
   VerdictResult,
   JobStatus,
   ReissuePath,
+  EventSource,
+  RealityEventType,
+  TrustGrade,
+  VesselMatchMethod,
+  RuleCoverage,
+  ConstraintType,
+  CitationKind,
+  ExplanationSource,
+  CitationIntegrity,
 } from '../types/domain';
 
 // ─────────────────────────────────────────────
@@ -162,7 +171,10 @@ export function toConfidenceGrade(field: {
   bbox: unknown | null;
   confidence: number;
   conflict_flag: boolean;
+  grade?: ConfidenceGrade;
 }): ConfidenceGrade {
+  // 서버가 저장한 등급이 있으면 그대로 씁니다(없는 목데이터만 신뢰도로 계산)
+  if (field.grade !== undefined) return field.grade;
   if (field.value === null || (field.bbox === null && field.confidence === 0)) {
     return 'NOT_FOUND';
   }
@@ -338,4 +350,90 @@ export const REISSUE_PATH_LABEL: Record<ReissuePath, string> = {
   ENDORSEMENT: '배서',
   REISSUE: '재발행',
   SWITCH_BL: '스위치 B/L',
+};
+
+// ─────────────────────────────────────────────
+// F6 — 현실 대조 표시 매핑
+// ─────────────────────────────────────────────
+
+/** F6 이벤트 출처 라벨 — 화면에 영문 코드를 그대로 노출하지 않기 위해 */
+export const EVENT_SOURCE_LABEL: Record<EventSource, string> = {
+  ULSAN_VTS: '울산항만공사 항만 내 선박 운항정보',
+  MOF_VSSL: '해양수산부 선박제원정보',
+  UNIPASS: '관세청 UNI-PASS (미채택)',
+  DCSA: '선사 DCSA (미채택)',
+  USER: '사용자 입력',
+  INTERNAL: '내부 기록',
+};
+
+/** 짧은 배지용 */
+export const EVENT_SOURCE_SHORT: Record<EventSource, string> = {
+  ULSAN_VTS: '울산항 VTS',
+  MOF_VSSL: '해수부 선박제원',
+  UNIPASS: 'UNI-PASS',
+  DCSA: 'DCSA',
+  USER: '사용자',
+  INTERNAL: '내부',
+};
+
+export const REALITY_EVENT_LABEL: Record<RealityEventType, string> = {
+  ARRIVAL: '입항',
+  BERTH: '접안',
+  UNBERTH: '이안',
+  SHIFT_BERTH: '이선',
+  ANCHOR: '투묘',
+  WEIGH_ANCHOR: '양묘',
+  DEPARTURE: '출항',
+  UNKNOWN: '미상 관제 기록',
+};
+
+/** 신뢰등급 뜻 — 등급 문자만 보여주면 A가 무슨 뜻인지 알 수 없다 */
+export const TRUST_GRADE_LABEL: Record<TrustGrade, string> = {
+  A: '공공기관 원본',
+  B: '민간 사업자 제공',
+  C: '사용자 입력',
+  INTERNAL: '내부 생성',
+};
+
+export const VESSEL_MATCH_LABEL: Record<VesselMatchMethod, string> = {
+  CALLSIGN: '콜사인 직접 대조',
+  NAME_FALLBACK: '선명 정규화 후 대조',
+  AMBIGUOUS: '동명이선 — 특정 못 함',
+  NOT_FOUND: '등록 기록 없음',
+};
+
+export const RULE_COVERAGE_LABEL: Record<RuleCoverage, string> = {
+  IMPLEMENTED: '판정함',
+  PARTIAL: '일부만 판정',
+  NOT_EVALUABLE: '판정 불가',
+};
+
+export const CONSTRAINT_TYPE_LABEL: Record<ConstraintType, string> = {
+  EQ: '값이 서로 같아야 함',
+  SUM: '합계가 맞아야 함',
+  DERIVE: '다른 값에서 계산됨',
+  REF: '다른 서류를 참조함',
+  COND: '조건부 제약',
+  EXT: '외부 기준 참조',
+};
+
+// ─────────────────────────────────────────────
+// F7 — AI 판정 설명 표시 매핑
+// ─────────────────────────────────────────────
+
+export const CITATION_KIND_LABEL: Record<CitationKind, string> = {
+  CLAUSE: '조문',
+  EVENT: '운항 기록',
+  FIELD: '서류 필드',
+};
+
+export const EXPLANATION_SOURCE_LABEL: Record<ExplanationSource, string> = {
+  LLM: 'AI 생성 서술',
+  TEMPLATE: '템플릿 문장',   // ⚠ 폴백을 'AI 생성'으로 쓰지 않는다 (F4와 같은 규약)
+};
+
+export const CITATION_INTEGRITY_LABEL: Record<CitationIntegrity, string> = {
+  PASS: '인용 확인 완료',
+  REPAIRED: '허위 인용 제거 후 재생성',
+  FALLBACK: '재생성 실패 — 템플릿 대체',
 };

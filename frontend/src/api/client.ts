@@ -1,52 +1,27 @@
 /**
- * aiService 로 요청을 보내는 아주 얇은 도구.
+ * 게이트웨이로 요청을 보내는 아주 얇은 도구.
  *
- * 지금은 aiService(FastAPI)에 **직접** 붙습니다. 나중에 게이트웨이가 앞에
- * 서면 base URL 하나만 바꾸면 되도록 여기 한 곳에 모아둡니다.
+ * 브라우저는 게이트웨이하고만 통신합니다. aiService(추출·검증·리포트)는 게이트웨이가
+ * 인증·감사를 거쳐 중계하므로 브라우저가 직접 부르지 않고, 내부 토큰도 받지 않습니다.
  */
 
 /**
- * 백엔드 주소.
- *
- * 기본값 `/ai-api` 는 **Vite 개발 프록시**를 가리킵니다 (vite.config.ts 참고).
- *
- * aiService 에 CORS 가 열려 있어서 `http://localhost:5000` 을 직접 적어도
- * 동작합니다. 그래도 프록시를 기본으로 두는 이유는, 직접 붙이면 백엔드의
- * 허용 목록(`CORS_ALLOW_ORIGINS`)과 프론트 주소가 **양쪽 다** 맞아야 하기
- * 때문입니다. 프록시를 거치면 브라우저에게는 같은 출처(5173)라 그 조건이
- * 아예 사라집니다.
- *
- * `import.meta.env` 는 Vite 가 `.env` 파일의 값을 넣어주는 자리입니다.
- * `VITE_` 로 시작하는 이름만 들어옵니다 (그래야 실수로 비밀값이 화면에
- * 딸려나가지 않습니다).
- */
-export const AI_API_BASE_URL: string =
-  import.meta.env.VITE_AI_API_BASE_URL ?? '/ai-api';
-
-/**
- * 게이트웨이(`src/smart_e_bl`) 주소 — 선적·서류·필드값을 DB에 저장하는 쪽입니다.
- * aiService(추출 전용)와는 별개 서비스라 base URL도 따로 둡니다. 개발 프록시는
- * `/gw-api` (vite.config.ts 참고).
+ * 게이트웨이(`src/smart_e_bl`) 주소 — 선적·서류·필드값을 DB에 저장하고 AI 호출을 중계하는 쪽입니다.
+ * 개발 프록시·운영 nginx 모두 `/gw-api` (vite.config.ts, nginx.conf 참고).
  */
 export const GATEWAY_API_BASE_URL: string =
   import.meta.env.VITE_GATEWAY_API_BASE_URL ?? '/gw-api';
 
 /**
- * aiService 를 브라우저가 직접 부를 때(위 설명대로, 게이트웨이가 아직
- * 안 서 있는 임시 상태) 같이 보내는 공유 토큰입니다.
- *
- * 이 값은 빌드된 JS 번들에 그대로 들어가므로 "누구나 볼 수 있는 값"입니다
- * — 진짜 로그인 인증이 아니라, 인증 없는 스캐너·봇이 API 를 마구 두드리는
- * 것만 막는 최소한의 문턱입니다. 미설정이면 헤더를 아예 안 보냅니다
- * (백엔드도 AI_INTERNAL_TOKEN 이 없으면 검사를 안 합니다 — 로컬 개발용).
+ * 저장된 선적의 AI 호출 경로 — 게이트웨이가 인증·감사를 거쳐 ai-service 로 중계합니다.
+ * `postJson(gatewayAiPath(id, 'verify'), body, signal, GATEWAY_API_BASE_URL)` 처럼 씁니다.
+ * 선적 id 가 없는 호출은 아래 `gatewayTenantAiPath` 를 씁니다.
  */
-const AI_INTERNAL_TOKEN: string = import.meta.env.VITE_AI_INTERNAL_TOKEN ?? '';
+export const gatewayAiPath = (shipmentId: string, operation: string): string =>
+  `/api/v1/shipments/${shipmentId}/ai/${operation}`;
 
-function aiServiceAuthHeaders(baseUrl: string): Record<string, string> {
-  return baseUrl === AI_API_BASE_URL && AI_INTERNAL_TOKEN
-    ? { 'X-Internal-Token': AI_INTERNAL_TOKEN }
-    : {};
-}
+/** 선적 id 없이 테넌트 단위로 중계되는 AI 호출 경로 (추출·L/C 파싱·용어 교정 등) */
+export const gatewayTenantAiPath = (operation: string): string => `/api/v1/ai/${operation}`;
 
 /**
  * 30초 타임아웃을 기본으로 건다. 호출부가 signal 을 준 경우에도 타임아웃은
@@ -85,6 +60,25 @@ export class ApiError extends Error {
 }
 
 /**
+ * 실패한 응답을 ApiError 로 던집니다.
+ * FastAPI 는 에러를 { "detail": "..." } 로 내려줍니다.
+ * 에러 본문이 JSON 이 아닐 수도 있으니(502 등) 실패해도 넘어갑니다.
+ */
+async function throwApiError(res: Response): Promise<never> {
+  const detail = await res
+    .json()
+    .then((j: { detail?: string }) => j.detail ?? res.statusText)
+    .catch(() => res.statusText);
+  throw new ApiError(res.status, detail);
+}
+
+/** 실패면 던지고, 성공이면 JSON 을 꺼냅니다. 204(No Content)는 본문이 없어 res.json()이 던지므로 건너뜁니다. */
+async function readJson<TRes>(res: Response): Promise<TRes> {
+  if (!res.ok) await throwApiError(res);
+  return (res.status === 204 ? undefined : await res.json()) as TRes;
+}
+
+/**
  * JSON 을 POST 하고 JSON 을 받습니다.
  *
  * `<TRes>` 는 "받아올 응답의 타입을 부르는 쪽이 정한다"는 뜻입니다 (제네릭).
@@ -94,26 +88,16 @@ export async function postJson<TRes>(
   path: string,
   body: unknown,
   signal?: AbortSignal,
-  baseUrl: string = AI_API_BASE_URL,
+  baseUrl: string = GATEWAY_API_BASE_URL,
 ): Promise<TRes> {
   const res = await fetch(`${baseUrl}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...aiServiceAuthHeaders(baseUrl) },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     signal: withTimeout(signal),
   });
 
-  if (!res.ok) {
-    // FastAPI 는 에러를 { "detail": "..." } 로 내려줍니다.
-    // 에러 본문이 JSON 이 아닐 수도 있으니(502 등) 실패해도 넘어갑니다.
-    const detail = await res
-      .json()
-      .then((j: { detail?: string }) => j.detail ?? res.statusText)
-      .catch(() => res.statusText);
-    throw new ApiError(res.status, detail);
-  }
-
-  return (await res.json()) as TRes;
+  return readJson<TRes>(res);
 }
 
 /** JSON 을 PUT 하고 JSON 을 받습니다 (예: 필드값 upsert). */
@@ -125,20 +109,12 @@ export async function putJson<TRes>(
 ): Promise<TRes> {
   const res = await fetch(`${baseUrl}${path}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...aiServiceAuthHeaders(baseUrl) },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     signal: withTimeout(signal),
   });
 
-  if (!res.ok) {
-    const detail = await res
-      .json()
-      .then((j: { detail?: string }) => j.detail ?? res.statusText)
-      .catch(() => res.statusText);
-    throw new ApiError(res.status, detail);
-  }
-
-  return (await res.json()) as TRes;
+  return readJson<TRes>(res);
 }
 
 /** GET 으로 JSON 을 받습니다 (예: 선적 목록·상세 조회). */
@@ -148,19 +124,10 @@ export async function getJson<TRes>(
   signal?: AbortSignal,
 ): Promise<TRes> {
   const res = await fetch(`${baseUrl}${path}`, {
-    headers: aiServiceAuthHeaders(baseUrl),
     signal: withTimeout(signal),
   });
 
-  if (!res.ok) {
-    const detail = await res
-      .json()
-      .then((j: { detail?: string }) => j.detail ?? res.statusText)
-      .catch(() => res.statusText);
-    throw new ApiError(res.status, detail);
-  }
-
-  return (await res.json()) as TRes;
+  return readJson<TRes>(res);
 }
 
 /**
@@ -175,7 +142,6 @@ export async function getText(
   signal?: AbortSignal,
 ): Promise<string> {
   const res = await fetch(`${baseUrl}${path}`, {
-    headers: aiServiceAuthHeaders(baseUrl),
     signal: withTimeout(signal),
   });
 
@@ -194,17 +160,10 @@ export async function deleteRequest(
 ): Promise<void> {
   const res = await fetch(`${baseUrl}${path}`, {
     method: 'DELETE',
-    headers: aiServiceAuthHeaders(baseUrl),
     signal: withTimeout(signal),
   });
 
-  if (!res.ok) {
-    const detail = await res
-      .json()
-      .then((j: { detail?: string }) => j.detail ?? res.statusText)
-      .catch(() => res.statusText);
-    throw new ApiError(res.status, detail);
-  }
+  if (!res.ok) await throwApiError(res);
 }
 
 /**
@@ -221,25 +180,16 @@ export async function postForm<TRes>(
   formData: FormData,
   params?: Record<string, string | number>,
   signal?: AbortSignal,
-  baseUrl: string = AI_API_BASE_URL,
+  baseUrl: string = GATEWAY_API_BASE_URL,
 ): Promise<TRes> {
   const query = params ? `?${new URLSearchParams(params as Record<string, string>)}` : '';
   const res = await fetch(`${baseUrl}${path}${query}`, {
     method: 'POST',
-    headers: aiServiceAuthHeaders(baseUrl),
     body: formData,
     signal: withTimeout(signal),
   });
 
-  if (!res.ok) {
-    const detail = await res
-      .json()
-      .then((j: { detail?: string }) => j.detail ?? res.statusText)
-      .catch(() => res.statusText);
-    throw new ApiError(res.status, detail);
-  }
-
-  return (await res.json()) as TRes;
+  return readJson<TRes>(res);
 }
 
 /**
@@ -252,21 +202,16 @@ export async function postJsonForBlob(
   path: string,
   body: unknown,
   signal?: AbortSignal,
+  baseUrl: string = GATEWAY_API_BASE_URL,
 ): Promise<{ blob: Blob; filename: string | null }> {
-  const res = await fetch(`${AI_API_BASE_URL}${path}`, {
+  const res = await fetch(`${baseUrl}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...aiServiceAuthHeaders(AI_API_BASE_URL) },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     signal: withTimeout(signal),
   });
 
-  if (!res.ok) {
-    const detail = await res
-      .json()
-      .then((j: { detail?: string }) => j.detail ?? res.statusText)
-      .catch(() => res.statusText);
-    throw new ApiError(res.status, detail);
-  }
+  if (!res.ok) await throwApiError(res);
 
   const disposition = res.headers.get('Content-Disposition') ?? '';
   const filenameMatch = /filename="?([^";]+)"?/.exec(disposition);

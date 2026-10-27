@@ -34,6 +34,8 @@ interface FieldFormProps {
   onFieldFocus?: (field: FieldValue) => void;
   editedValues: EditedValues;
   onFieldEdit: (fieldName: string, value: string | null) => void;
+  /** 방금 저장에 성공한 필드 — 행에 "저장됨"을 잠깐 보여줍니다 */
+  savedFieldName?: string | null;
   /** 값은 안 고치고 "확인"만 표시한 필드 (필드 이름 집합) */
   confirmedFields: ConfirmedFields;
   /** "값 확인함" 버튼을 눌렀을 때 */
@@ -65,6 +67,7 @@ export function FieldForm({
   onFieldFocus,
   editedValues,
   onFieldEdit,
+  savedFieldName = null,
   confirmedFields,
   onFieldConfirm,
   onSuggestionAccept,
@@ -104,7 +107,7 @@ export function FieldForm({
           textAlign: 'left',
         }}
       >
-        <h2 style={{ margin: 0, fontSize: 15 }}>추출 필드</h2>
+        <h2 className="section-title" style={{ margin: 0 }}>추출 필드</h2>
         {/* 총 건수만 둡니다. 등급별 건수는 아래 그룹 헤더에 이미 다 있고,
             전에 있던 "확인 필요 N" 칩은 그룹명 "확인 권고"와 헷갈리는 데다
             검증을 막지 않는 "출처 없음"까지 섞여 있어서 뺐습니다 */}
@@ -130,7 +133,11 @@ export function FieldForm({
             }
             // 검증을 막는 등급(필수 확인)만 펼친 채 시작합니다 — 상수를 따르므로
             // blocksVerify 규칙이 바뀌면 여기도 자동으로 따라갑니다
-            defaultOpen={CONFIDENCE[grade].blocksVerify}
+            // 딥링크(?focus=)로 들어온 필드가 든 그룹도 펼칩니다 — 접힌 채면 행이 없어 스크롤할 곳이 없습니다
+            defaultOpen={
+              CONFIDENCE[grade].blocksVerify ||
+              groupFields.some((field) => field.field_name === focusedFieldName)
+            }
           >
             {groupFields.map((originalField) => {
               // 값·신뢰도 등급은 해소 결과를 반영해서 보여줍니다. 자리만 원본
@@ -154,6 +161,7 @@ export function FieldForm({
                   field={field}
                   displayValue={displayValueOf(field, editedValues)}
                   isEdited={isEdited}
+                  justSaved={savedFieldName === field.field_name}
                   isEditing={editingFieldName === field.field_name}
                   draft={draft}
                   onDraftChange={setDraft}

@@ -67,13 +67,40 @@ export function DocumentViewer({ focusedField, documents, shipmentId }: Document
     activeDocument !== null && UUID_RE.test(activeDocument.document_id)
       ? `${GATEWAY_API_BASE_URL}/api/v1/shipments/${shipmentId}/documents/${activeDocument.document_id}/file`
       : null;
-  const bbox = fileUrl === null ? (focusedField?.bbox ?? null) : null;
+  // 이미지(PNG/JPG) 서류는 iframe 대신 <img>로 그립니다 — iframe의 이미지 뷰어는
+  // 원본 픽셀 크기로 보여줘서 뷰어 박스(480px)에 잘려 보였습니다.
+  const isImage = fileUrl !== null && /\.(png|jpe?g)$/i.test(activeDocument?.file_name ?? '');
+  // 목업은 원본 좌표(612x792), 이미지는 정규화 비율(0~1) bbox를 씁니다.
+  // 실제 PDF는 iframe 안을 알 수 없어 하이라이트하지 않습니다.
+  const bbox = fileUrl === null || isImage ? (focusedField?.bbox ?? null) : null;
   // %로 계산합니다(px 아님) — .s3-viewer-box의 실제 렌더 폭은 480px 고정이
   // 아니라 CSS(width:100%, max-width:480px)로 화면 폭에 따라 줄어듭니다.
   // px로 계산하면 좁은 화면에서 박스는 작아지는데 하이라이트는 480px 기준
   // 그대로라 어긋납니다. %는 부모 크기에 맞춰 같이 줄어들어서 항상 맞습니다.
   const highlightRect =
-    bbox !== null ? bboxToScreenRect(bbox, MOCK_DOCUMENT_ORIGINAL_SIZE, { width: 100, height: 100 }) : null;
+    bbox !== null
+      ? bboxToScreenRect(
+          bbox,
+          isImage ? { width: 1, height: 1 } : MOCK_DOCUMENT_ORIGINAL_SIZE,
+          { width: 100, height: 100 },
+        )
+      : null;
+  const highlight =
+    highlightRect !== null ? (
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          left: `${highlightRect.left}%`,
+          top: `${highlightRect.top}%`,
+          width: `${highlightRect.width}%`,
+          height: `${highlightRect.height}%`,
+          backgroundColor: 'rgba(250, 204, 21, 0.35)',
+          border: '1.5px solid rgba(217, 160, 12, 0.9)',
+          borderRadius: 2,
+        }}
+      />
+    ) : null;
   const documentAreaStyle: CSSProperties = {
     position: 'relative',
     // 종이 문서를 흉내내는 자리라서 앱 다크/라이트 테마와 무관하게 고정된
@@ -154,7 +181,20 @@ export function DocumentViewer({ focusedField, documents, shipmentId }: Document
 
       {/* 실제 서류가 있으면 iframe으로 진짜 파일을, 없으면(픽스처) 회색 목업을 보여줌 */}
       <div className="s3-viewer-box" style={documentAreaStyle}>
-        {fileUrl !== null ? (
+        {isImage ? (
+          // 폭에 맞추고 비율 유지, 세로로 길면 박스 안에서 스크롤. 하이라이트는
+          // 이미지와 같은 크기의 래퍼 안에 %로 얹어서 이미지와 함께 움직입니다.
+          <div style={{ width: '100%', height: '100%', overflowY: 'auto' }}>
+            <div style={{ position: 'relative', lineHeight: 0 }}>
+              <img
+                src={fileUrl}
+                alt={activeDocument?.file_name ?? '문서 미리보기'}
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+              />
+              {highlight}
+            </div>
+          </div>
+        ) : fileUrl !== null ? (
           <iframe
             src={fileUrl}
             title={activeDocument?.file_name ?? '문서 미리보기'}
@@ -164,21 +204,7 @@ export function DocumentViewer({ focusedField, documents, shipmentId }: Document
           <span style={{ fontSize: 12, color: '#8a8680' }}>문서 미리보기 (목업)</span>
         )}
 
-        {highlightRect !== null && (
-          <div
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              left: `${highlightRect.left}%`,
-              top: `${highlightRect.top}%`,
-              width: `${highlightRect.width}%`,
-              height: `${highlightRect.height}%`,
-              backgroundColor: 'rgba(250, 204, 21, 0.35)',
-              border: '1.5px solid rgba(217, 160, 12, 0.9)',
-              borderRadius: 2,
-            }}
-          />
-        )}
+        {!isImage && highlight}
       </div>
 
       {/* 뷰어 아래 근거 정보 — 실제 PDF가 없어 회색 박스가 비어 보이는 자리를

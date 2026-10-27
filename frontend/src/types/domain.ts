@@ -60,6 +60,8 @@ export interface FieldValue {
   bbox: BBox | null;
   extractor: 'rule' | 'ocr+llm' | 'json';
   conflict_flag: boolean;
+  /** 게이트웨이가 저장해 둔 등급(새로고침 후에도 "값 확인함" 유지). 목데이터엔 없어 optional */
+  grade?: ConfidenceGrade;
   /** 다중 출처 충돌 시 후보를 폐기하지 않고 모두 보존 (§5.1) */
   candidates?: FieldValue[];
 }
@@ -109,6 +111,12 @@ export type Authority =
 /** 교정 거절 사유 — 사전 개선 입력이므로 수집 생략 불가 (§5.2) */
 export type RejectReason = 'INTERNAL_PRACTICE' | 'COUNTERPARTY' | 'WRONG_SUGGESTION';
 
+/** 자유서식 필드 치환 범위 (§5.5). 문자 인덱스 [start, end) */
+export interface TextSpan {
+  start: number;
+  end: number;
+}
+
 export interface Suggestion {
   suggestion_id: string;
   field: string;
@@ -119,6 +127,11 @@ export interface Suggestion {
   confidence: number;
   /** 동일 값이 쓰인 다른 서류·필드 — "전체 적용" 일괄 승인 범위 */
   scope: { doc_id: string; field: string }[];
+  /**
+   * 자유서식 필드(상품명세 등)에서 이 제안이 바꿀 글자 범위.
+   * 정형 필드는 값 전체를 바꾸므로 없음(undefined).
+   */
+  span?: TextSpan;
 }
 
 // ─────────────────────────────────────────────
@@ -198,17 +211,30 @@ export interface ImpactResult {
 // F6 — 현실 대조
 // ─────────────────────────────────────────────
 
-export type EventSource = 'UNIPASS' | 'DCSA' | 'USER' | 'INTERNAL';
+/**
+ * 이벤트 출처.
+ *
+ * 이번 구현이 실제로 붙은 것은 ULSAN_VTS 하나이고, 해양수산부 선박제원정보
+ * (MOF_VSSL)는 이벤트가 아니라 "선명 → 콜사인" 해소에만 쓴다.
+ * UNIPASS·DCSA는 원안에만 있고 채택하지 않았다 — 타입에는 남겨두되
+ * 목데이터에서는 쓰지 않는다.
+ */
+export type EventSource = 'ULSAN_VTS' | 'MOF_VSSL' | 'UNIPASS' | 'DCSA' | 'USER' | 'INTERNAL';
 
 /** 소스 신뢰등급 (§5.6) */
 export type TrustGrade = 'A' | 'B' | 'C' | 'INTERNAL';
+
+/** 울산항 VTS 관제 이벤트 7종 (ioprtVtsType 3~9) + 미상 */
+export type RealityEventType =
+  | 'ARRIVAL' | 'BERTH' | 'UNBERTH' | 'SHIFT_BERTH'
+  | 'ANCHOR' | 'WEIGH_ANCHOR' | 'DEPARTURE' | 'UNKNOWN';
 
 export interface RealityEvent {
   event_id: string;
   shipment_id: string;
   source: EventSource;
   source_event_code: string;
-  event_type: string;
+  event_type: RealityEventType;
   occurred_at: UtcTimestamp;
   recorded_at: UtcTimestamp;
   location: string | null;      // UN/LOCODE
@@ -217,6 +243,12 @@ export interface RealityEvent {
   trust_grade: TrustGrade;
   /** 날짜만 제공된 이벤트는 시각을 표시하지 않음 (§5.6) */
   precision: 'DATE' | 'DATETIME';
+  /** 항차 그룹 키 — (콜사인, 연도, 울산항 연번) */
+  voyage_no: string | null;
+  /** 정박지(WAM)인지 계류시설인지 — C-STAT-01이 이 구분을 씀 */
+  facility: '정박지' | '계류시설' | null;
+  /** 모르는 관제 코드는 버리지 않고 원본을 남긴다 (event_type = 'UNKNOWN') */
+  raw_code: string | null;
 }
 
 /** 어댑터 연결 상태 — S5에 표시. 데이터 없음을 정상으로 판단하지 않음 (§5.6) */
@@ -225,6 +257,8 @@ export interface AdapterStatus {
   connected: boolean;
   last_synced_at: UtcTimestamp | null;
   consecutive_failures: number;
+  /** 어댑터가 볼 수 있는 범위. 화면이 "커버리지 밖"을 설명할 때 씀 */
+  coverage_note: string;
 }
 
 /**
@@ -232,6 +266,9 @@ export interface AdapterStatus {
  *
  * ⚠ 서류측·현실측 근거 이벤트를 각각 1건 이상 가져야 합니다.
  *   document_event_ids·reality_event_ids 둘 다 비어 있는 경보는 만들지 않습니다.
+ *   단 예외: C-ROUTE-01(B/L은 울산항이라는데 울산 관제 기록에 그 선박이 없음)은
+ *   reality_event_ids가 []입니다 — "기록이 없다"는 사실 자체가 현실측 근거라서
+ *   가리킬 이벤트가 없습니다. 화면은 빈 배열을 정상으로 다뤄야 합니다.
  */
 export interface Alert {
   alert_id: string;
@@ -246,6 +283,87 @@ export interface Alert {
   reality_event_ids: string[];
   acknowledged: boolean;
   created_at: UtcTimestamp;
+  /** 게이트웨이(reality.py)가 실제 경보에 추가로 내려주는 값 — 목데이터엔 없어서 optional */
+  rule_id?: string;
+  title?: string;
+  /** acknowledged는 status !== 'OPEN' 과 같은 뜻입니다 */
+  status?: AlertStatus;
+  last_seen_at?: UtcTimestamp;
+}
+
+export type AlertStatus = 'OPEN' | 'ACKNOWLEDGED' | 'WHITELISTED' | 'RESOLVED';
+
+/**
+ * 선명 → 콜사인 해소 결과 (§3.2).
+ *
+ * B/L에는 콜사인 칸이 없어서 선명으로 조인할 수밖에 없다. 어떤 경로로
+ * 배를 특정했는지를 화면이 밝혀야 한다 — 이름 폴백은 동명이선 위험이 있다.
+ */
+export type VesselMatchMethod = 'CALLSIGN' | 'NAME_FALLBACK' | 'AMBIGUOUS' | 'NOT_FOUND';
+
+export interface VesselMatch {
+  /** B/L에 적힌 원문 선명. 예: "M/V OSUNG HO V.112" */
+  bl_vessel: string;
+  /** 접두(M/V·MV)·접미(HO)·항차(V.112) 제거 후 */
+  normalized: string;
+  call_sign: string | null;
+  method: VesselMatchMethod;
+  /** AMBIGUOUS일 때 후보 콜사인들 */
+  candidates: string[];
+}
+
+/** 모순 룰 실행 가능성 (§2). 원안 11건 중 실제 구현은 6건 */
+export type RuleCoverage = 'IMPLEMENTED' | 'PARTIAL' | 'NOT_EVALUABLE';
+
+export interface RealityRuleStatus {
+  rule_id: string;          // 'C-TIME-01' 등
+  intent: string;           // 원안 취지 한 줄
+  coverage: RuleCoverage;
+  severity: Severity | null;  // NOT_EVALUABLE이면 null
+  /** 왜 못 하는지 / 어디까지만 하는지. 숨기지 않는다 */
+  reason: string;
+}
+
+// ─────────────────────────────────────────────
+// F7 — AI 판정 설명
+// ─────────────────────────────────────────────
+
+/** 인용 종류 — 조문 · 현실 이벤트 · 서류 필드 */
+export type CitationKind = 'CLAUSE' | 'EVENT' | 'FIELD';
+
+export interface Citation {
+  citation_id: string;
+  kind: CitationKind;
+  /** 가리키는 대상 ID. CLAUSE면 조문 코드, EVENT면 event_id, FIELD면 field_name */
+  ref: string;
+  /** 화면에 보여줄 원문 조각 */
+  snippet: string;
+  /**
+   * 출력 검증기가 이 인용 ID의 실재를 대조한 결과.
+   * false면 화면에 렌더하지 않는다 — 없는 조문을 인용한 것이므로.
+   */
+  verified: boolean;
+}
+
+/** 설명을 누가 썼는가. 폴백을 'AI 생성'으로 표기하지 않기 위해 반드시 구분한다 */
+export type ExplanationSource = 'LLM' | 'TEMPLATE';
+
+/** 인용 무결성 검사 결과 */
+export type CitationIntegrity =
+  | 'PASS'      // 모든 인용이 실재함
+  | 'REPAIRED'  // 허위 인용을 걸러내고 재생성함
+  | 'FALLBACK'; // 재생성도 실패해 템플릿 문장으로 대체함
+
+export interface Explanation {
+  /** 설명 대상 — Verdict.verdict_id 또는 Alert.alert_id */
+  target_id: string;
+  narrative: string;
+  citations: Citation[];
+  generated_by: ExplanationSource;
+  integrity: CitationIntegrity;
+  /** 검증기가 걸러낸 허위 인용 건수. 0이 아니면 화면에 밝힌다 */
+  dropped_citations: number;
+  generated_at: UtcTimestamp;
 }
 
 // ─────────────────────────────────────────────

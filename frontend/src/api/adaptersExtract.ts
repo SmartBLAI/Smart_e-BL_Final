@@ -94,6 +94,10 @@ export function toDraftFields(draft: WireBLDraft, page: number | null = null): F
 
   const fields = draft.fields
     .filter((f) => !DROPPED_FIELD_NAMES.has(f.name) && f.name !== 'vessel' && f.name !== 'voyage_no')
+    // 문언·부기는 하자 룰(D028~D031)용 선택 필드라, 문언이 없으면 "출처 없음" 항목으로
+    // 띄우지 않는다. (게이트웨이 필드 카탈로그에도 없어 저장은 안 되므로, 빈 항목을
+    // 띄우면 업로드 직후와 새로고침 후 필드 수가 달라진다.)
+    .filter((f) => !(f.name === 'bl_clauses' && !f.value))
     .map((f) => toFieldValue(f, page));
 
   if (vessel || voyageNo) {

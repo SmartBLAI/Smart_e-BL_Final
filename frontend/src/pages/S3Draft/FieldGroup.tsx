@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { ConfidenceGrade } from '../../types/domain';
@@ -33,6 +33,11 @@ export function FieldGroup({
   children,
 }: FieldGroupProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  // 처음엔 접혀 있다가 나중에(데이터 로드 뒤 딥링크 포커스) 펼쳐야 하는 경우.
+  // 사용자가 접은 것을 다시 펴지는 않도록 true 로 바뀔 때만 반응합니다.
+  useEffect(() => {
+    if (defaultOpen) setIsOpen(true);
+  }, [defaultOpen]);
   const meta = CONFIDENCE[grade];
   const colorVar = GRADE_COLOR_VAR[grade];
   const Chevron = isOpen ? ChevronDown : ChevronRight;

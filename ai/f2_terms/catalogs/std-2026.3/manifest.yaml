@@ -1,0 +1,37 @@
+# 이 카탈로그 버전의 정체와 계보.
+#
+# 옛 버전 디렉터리를 이미지에서 지우면 그 시기의 판정을 재현할 수 없다.
+# deprecates 로 계보를 남기고, 기동 시 모든 버전을 검증한다.
+#
+# std-2026.3 — 제안 정책 개정(practice-1). F2 가 "비교용 정규화"와 "사용자에게 보이는
+# 교정 제안"을 섞어 서류 관행상 맞는 값(KGS, CBM, FOB BUSAN, 대문자 상호 …)까지
+# EDI 코드로 바꾸자고 제안하던 것을 분리한다.
+#   - practice_variants: 서류에 그대로 써도 맞는 표기 → 제안하지 않는다(조회·내부 비교엔 쓴다).
+#   - bl_form(단위 등): 제안이 필요할 때 내놓는 서류 관행 표기. canonical(UN/ECE 코드)은 내부 비교용.
+#   - successors: 폐지된 Incoterms(DAT/DES/DEQ …)는 후속 조건 후보를 사람이 고른다.
+#   - suggestion_policy: 위 동작을 켜는 스위치. 옛 카탈로그엔 이 키가 없어 과거 판정이 그대로 재현된다.
+version: 1
+catalog_version: std-2026.3
+effective_date: 2026-10-26
+deprecates: [std-2026.2]
+suggestion_policy: practice-1
+files:
+  - glossary.yaml
+  - locode.yaml
+sources:
+  - authority: UN/LOCODE
+    note: 항구·지명. locode.yaml. canonical(코드)은 서류 면에 인쇄되지 않으므로 제안은 bl_form(항구명)으로 한다
+  - authority: UN/ECE Rec 20
+    note: 수량·용적 단위 코드. 내부 비교용 canonical(KGM·MTQ …). 서류 관행 표기(KGS·CBM …)는 bl_form/practice_variants
+  - authority: UN/ECE Rec 21
+    note: 포장 형태 코드(CT·PK·BX·BG·DR·PP). 서류에는 CTNS·PKGS·PCS 등 관행 표기를 쓴다
+  - authority: Incoterms 2020
+    note: 가격조건. 코드 뒤 장소·금액(FOB BUSAN, CIP $3,111.09)은 정상 표기라 제안하지 않는다. F3 는 앞의 코드만 비교한다. 폐지 조건(DAT/DAF/DES/DEQ/DDU)은 후속 후보 안내
+  - authority: ISBP 745
+    note: 관행 문구
+  - authority: ISO 6346
+    note: 컨테이너 번호. 체크디지트가 맞는 번호는 표기와 무관하게 정상, 틀리면 Notice
+  - authority: DCSA · 업계 관행
+    note: 운송서류 용어·인도 관련. 영문 약어(SWB·D/O·A/N …)는 정상 관행 표기
+  - authority: HS
+    note: 품목 분류. 형식이 맞는 코드는 점·라벨 유무와 무관하게 정상. 예시 코드만, 관세율표 미적재

@@ -12,7 +12,7 @@
  *   없는 짝짓기로 엉뚱한 조치문을 붙이는 것보다, 없는 채로 두는 편이 낫습니다.
  */
 
-import { toSkipped, type SkippedRuleView } from './adapters';
+import { toScreenFieldName, toSkipped, type SkippedRuleView } from './adapters';
 import type { DefectPrediction, Severity, Verdict } from '../types/domain';
 import type { WireSeverity } from './wire';
 import type { WireReportResponse, WireRiskItem } from './wireReport';
@@ -41,7 +41,7 @@ function toVerdict(
   return {
     verdict_id: `${r.rule_id}#${index}`,
     rule_id: r.rule_id,
-    target_fields: r.fields,
+    target_fields: r.fields.map(toScreenFieldName),
     result: 'VIOLATION',
     severity: SEVERITY_MAP[r.severity],
     message: r.message,

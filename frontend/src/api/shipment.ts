@@ -6,6 +6,7 @@
  */
 
 import { deleteRequest, getJson, postForm, postJson, putJson, GATEWAY_API_BASE_URL } from './client';
+import { toRealityView, type RealityView } from './adaptersReality';
 import { toShipmentAndFields, toShipment, toWireFieldValueIn } from './adaptersShipment';
 import type {
   WireCreateShipmentResponse,
@@ -14,6 +15,7 @@ import type {
   WireSaveVerificationResponse,
   WireShipmentDetailResponse,
   WireShipmentListResponse,
+  WireShipmentOverviewResponse,
 } from './wireShipment';
 import type {
   DefectPrediction,
@@ -30,6 +32,21 @@ export async function listShipments(signal?: AbortSignal): Promise<Shipment[]> {
     signal,
   );
   return wire.shipments.map(toShipment);
+}
+
+/**
+ * 대시보드용: 선적 목록 + 선적별 상세 + 현실 대조 뷰를 요청 한 번에 받습니다.
+ * 선적마다 getShipment/getReality 를 부르던 1+2N 요청을 대체합니다 — 내용은 같습니다.
+ */
+export async function getShipmentsOverview(signal?: AbortSignal): Promise<
+  Array<Awaited<ReturnType<typeof getShipment>> & { reality: RealityView }>
+> {
+  const wire = await getJson<WireShipmentOverviewResponse>(
+    '/api/v1/shipments/overview',
+    GATEWAY_API_BASE_URL,
+    signal,
+  );
+  return wire.shipments.map((s) => ({ ...toShipmentAndFields(s), reality: toRealityView(s.reality) }));
 }
 
 export async function getShipment(
@@ -79,20 +96,14 @@ export async function uploadDocument(
 }
 
 /**
- * 필드값 저장만 합니다 — `PUT /fields`. createDraftWithFields(업로드 직후 1회,
- * 편집 없음)와 VerifyBar(검증 실행 직전, F2 교정 승인값을 영속시키기 위해 1회,
- * 편집 있음)가 같이 씁니다.
- *
- * editedFieldNames: 사용자가 직접 고친 필드 이름 집합(shared/shipmentStats.ts의
- *   isEditedField로 판정). 이 필드는 grade를 CONFIRMED로 보내 저장 후에도 값이
- *   살아있게 합니다 — toWireFieldValueIn 주석 참고.
+ * 필드값 저장만 합니다 — `PUT /fields`. createDraftWithFields(업로드 직후)와
+ * 스토어의 editField(필드 1건 즉시 저장)가 같이 씁니다.
  */
 export async function saveFields(
   shipmentId: string,
   documentId: string,
   page: number,
   fields: FieldValue[],
-  editedFieldNames?: ReadonlySet<string>,
   signal?: AbortSignal,
 ): Promise<WireSaveFieldsResponse> {
   return putJson<WireSaveFieldsResponse>(
@@ -100,10 +111,20 @@ export async function saveFields(
     {
       document_id: documentId,
       page,
-      fields: fields.map((f) => toWireFieldValueIn(f, editedFieldNames?.has(f.field_name) ?? false)),
+      fields: fields.map(toWireFieldValueIn),
     },
     GATEWAY_API_BASE_URL,
     signal,
+  );
+}
+
+/** "값 확인함" — 게이트웨이의 대표 field_value 등급을 CONFIRMED로 올립니다 */
+export async function confirmField(shipmentId: string, fieldName: string): Promise<void> {
+  await postJson<unknown>(
+    `/api/v1/shipments/${shipmentId}/fields/${encodeURIComponent(fieldName)}/confirm`,
+    {},
+    undefined,
+    GATEWAY_API_BASE_URL,
   );
 }
 
@@ -142,7 +163,7 @@ export async function createDraftWithFields(
     const uploaded = await uploadDocument(shipmentId, file, 'BL_DRAFT', signal);
 
     // 업로드 직후 최초 저장 — 아직 사용자가 고친 필드가 없으므로 editedFieldNames 없음
-    await saveFields(shipmentId, uploaded.document_id, page, fields, undefined, signal);
+    await saveFields(shipmentId, uploaded.document_id, page, fields, signal);
 
     // 신용장은 마지막 조회 **전에** 올려야 documents 에 같이 담겨 옵니다 —
     // 나중에 올리면 화면 스토어에 B/L 만 든 서류 목록이 남아, S3·S4 가

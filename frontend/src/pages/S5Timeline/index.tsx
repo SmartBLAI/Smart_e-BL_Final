@@ -1,23 +1,28 @@
 import { useEffect, useRef } from 'react';
 import { FileQuestion, Loader2, SatelliteDish } from 'lucide-react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { useShipmentData, useShipmentStoreStatus } from '../../shared/shipmentStore';
+import { useParams, useSearchParams } from 'react-router-dom';
+import {
+  isDemoFixtures,
+  useRealityActions,
+  useShipmentData,
+  useShipmentStoreStatus,
+} from '../../shared/shipmentStore';
+import { isNeverRun, sortEventsByTime } from '../../shared/realityView';
+import { SkippedList } from '../../components/SkippedList';
 import { ShipmentHeader } from '../../components/ShipmentHeader';
-import { SeverityBadge } from '../../components/SeverityBadge';
 import { EmptyState } from '../../components/EmptyState';
 import { PageContainer } from '../../components/PageContainer';
-import type { Alert, RealityEvent } from '../../types/domain';
-
-/** RealityEvent.precision을 지킴 — DATE면 시각을 표시하지 않음 (§5.6) */
-function formatEventTime(event: RealityEvent): string {
-  const date = new Date(event.occurred_at);
-  return event.precision === 'DATE' ? date.toLocaleDateString('ko-KR') : date.toLocaleString('ko-KR');
-}
+import type { Alert } from '../../types/domain';
+import { AdapterBanner } from './AdapterBanner';
+import { TimelineEvent } from './TimelineEvent';
+import { TimelineEmptyState } from './TimelineEmptyState';
+import { RealityCheckBar } from './RealityCheckBar';
 
 export function S5Timeline() {
   const { id } = useParams();
   const data = useShipmentData(id);
   const storeStatus = useShipmentStoreStatus();
+  const { runRealityCheck } = useRealityActions();
 
   // 화면전이_정의.md: "경보 카드 클릭 → /shipments/:id?event=<event_id> →
   // 타임라인에서 해당 마커로 스크롤". 이 페이지가 그 "스크롤"을 담당함
@@ -48,7 +53,7 @@ export function S5Timeline() {
     );
   }
 
-  const { shipment, realityEvents, alerts } = data;
+  const { shipment, realityEvents, alerts, adapterStatus, vesselMatch } = data;
 
   // 이 이벤트를 근거로 삼는 경보 찾기 — 타임라인 위에 "경보 근거" 표식을 답니다.
   // 경보 내용 자체(근거 대조·이동)는 S6가 맡습니다. 두 화면이 같은 경보를
@@ -70,14 +75,16 @@ export function S5Timeline() {
       for (const eventId of alert.reality_event_ids) highlightedEventIds.add(eventId);
     }
   }
-  const sortedEvents = [...realityEvents].sort(
-    (a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime(),
-  );
+  const sortedEvents = sortEventsByTime(realityEvents);
+  const isDemo = isDemoFixtures();
+  const neverRun = !isDemo && isNeverRun(adapterStatus);
+  // C-ROUTE-01 같은 "기록 부재" 경보는 가리킬 이벤트가 없어 타임라인 표식으로 못 보입니다
+  const absenceAlerts = alerts.filter((alert) => alert.reality_event_ids.length === 0);
 
   return (
     <PageContainer narrow>
       <div style={{ textAlign: 'left' }}>
-        <h1 style={{ textAlign: 'left' }}>선적 상세</h1>
+        <h1 className="page-title" style={{ marginBottom: 'var(--space-4)' }}>선적 상세</h1>
 
         <ShipmentHeader shipment={shipment} boxed>
           <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
@@ -88,13 +95,39 @@ export function S5Timeline() {
 
         <div style={{ height: 16 }} />
 
-        <h2 style={{ textAlign: 'left' }}>타임라인</h2>
-        {sortedEvents.length === 0 ? (
-          // 픽스처에 이 선적의 이벤트가 없습니다. 이벤트를 지어내지 않고 없다고
-          // 씁니다. 다만 §5.6이 "데이터 없음을 정상으로 판단하지 않는다"고 정해둔
-          // 만큼, "이상 없음"이 아니라 "아직 안 들어왔다"로 읽히게 문구를 잡았습니다.
-          // (어댑터 연결 상태 표시(AdapterStatus)는 아직 안 만들었습니다)
-          <EmptyState icon={SatelliteDish} message="아직 현실 대조 데이터가 없습니다." />
+        {adapterStatus !== null && vesselMatch !== null && (
+          <AdapterBanner status={adapterStatus} vesselMatch={vesselMatch} />
+        )}
+
+        <div style={{ height: 16 }} />
+
+        {!isDemo && (
+          <div style={{ margin: 'var(--space-1) 0 var(--space-2)' }}>
+            <RealityCheckBar onRun={() => runRealityCheck(shipment.shipment_id)} />
+          </div>
+        )}
+
+        {absenceAlerts.length > 0 && (
+          <ul style={{ margin: '12px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)' }}>
+            {absenceAlerts.map((alert) => (
+              <li key={alert.alert_id}>
+                {alert.message} <span style={{ color: 'var(--text-muted)' }}>(울산항 VTS 관제 기록에 해당 선박이 없음 — 기록 부재가 근거)</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <h2 className="section-title">타임라인</h2>
+        {neverRun ? (
+          <EmptyState
+            icon={SatelliteDish}
+            message="아직 현실 대조를 실행하지 않았습니다. 위 버튼으로 울산항 VTS 관제 기록과 대조하세요."
+          />
+        ) : sortedEvents.length === 0 ? (
+          // §5.6 "데이터 없음을 정상으로 판단하지 않는다" — 어댑터가 붙었는데
+          // 이 선적 기록이 없는 경우와, 어댑터 연결 자체가 실패한 경우를
+          // 같은 문장으로 뭉개지 않고 나눕니다 (TimelineEmptyState 참고).
+          <TimelineEmptyState status={adapterStatus} />
         ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {sortedEvents.map((event) => {
@@ -119,43 +152,19 @@ export function S5Timeline() {
                   backgroundColor: isHighlighted ? 'var(--brand-primary-light)' : 'var(--bg-card)',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <strong>{event.event_type}</strong>
-                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                    {formatEventTime(event)}
-                  </span>
-                </div>
-                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                  출처 {event.source} · 신뢰등급 {event.trust_grade}
-                </span>
-
-                {eventAlerts.length > 0 && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 'var(--space-2)',
-                      flexWrap: 'wrap',
-                      paddingTop: 6,
-                      borderTop: '1px solid var(--border-default)',
-                    }}
-                  >
-                    {eventAlerts.map((alert) => (
-                      <SeverityBadge key={alert.alert_id} severity={alert.severity} />
-                    ))}
-                    <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
-                      경보 {eventAlerts.length}건의 근거
-                    </span>
-                    <Link to="/alerts" style={{ fontSize: 12.5 }}>
-                      경보 센터에서 보기
-                    </Link>
-                  </div>
-                )}
+                <TimelineEvent event={event} alerts={eventAlerts} />
               </div>
             );
           })}
         </div>
         )}
+
+        <div style={{ marginTop: 16 }}>
+          <SkippedList
+            skipped={data.realitySkipped ?? []}
+            hint="울산항 VTS 관제 기록 기준으로 평가하지 못한 항목입니다 (평가 못 함은 이상 없음이 아닙니다)."
+          />
+        </div>
       </div>
     </PageContainer>
   );

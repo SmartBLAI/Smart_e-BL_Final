@@ -1,43 +1,41 @@
-# Env / Secrets
+# ── 비밀값 ─────────────────────────────────────────────
 .env
 .env.local
 *.pem
 *.key
 
-# Python
+# ── 문서·로컬 도구 설정 (저장소에 올리지 않음) ─────────
+docs/
+.claude/
+
+# ── Python ────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 .venv/
 venv/
+.pytest_cache/
 
-# Node (frontend, e2e tests, blockchain)
+# ── Node (frontend, e2e tests) ─────────────────────────
 node_modules/
 npm-debug.log*
 dist/
 dist-ssr/
 
-# Python (backend aiService)
-.pytest_cache/
+# ── 실행 중 생기는 데이터 ──────────────────────────────
+# 게이트웨이를 Docker 밖에서 띄울 때의 업로드 저장소(DOCUMENT_STORAGE_ROOT 기본값)
+data/documents/
 
-# Hardhat (backend blockchain) — scoped so it doesn't catch aiService/mlModel/artifacts/
-backend/blockchain/artifacts/
-backend/blockchain/cache/
+# ── 논문용 실험 코드 (저장소에 올리지 않음) ─────────────
+# 서비스 실행에는 쓰이지 않는다(참조는 주석뿐). 각자 로컬에서 관리한다.
+eval/
+ai/f3_research/
 
-# Terraform / Infra state
+# ── Terraform / Infra state ───────────────────────────
 *.tfstate
 *.tfstate.backup
 .terraform/
 
-# IDE / OS
+# ── IDE / OS ──────────────────────────────────────────
 .DS_Store
 .vscode/
 .idea/
-
-# F3 하자 예측 모델 — 생성물(값 분포 풀·합성 데이터셋·학습 아티팩트).
-# data/reviews/, data/llm_features/ 는 예외 — claude 판정 캐시·Gemini 피처
-# 캐시는 재현성 아티팩트라 커밋한다(설계서 5.5, 계획서 10단계). 부모 디렉토리
-# 전체를 제외하면 하위 경로 재포함(!)이 동작하지 않으므로 와일드카드(`data/*`)로
-# 항목 단위 제외 + 개별 재포함 조합을 쓴다.
-ai/defect_model/data/*
-!ai/defect_model/data/reviews/
-!ai/defect_model/data/llm_features/

@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend/aiService
+        working-directory: ai
     steps:
       - uses: actions/checkout@v4
 
@@ -52,3 +52,48 @@ jobs:
       # 프론트엔드에 별도 테스트가 아직 없어(진행 중 과제), 지금은 이게
       # 유일한 자동 검증이다.
       - run: npm run build
+
+  gateway-test:
+    # 게이트웨이(src/smart_e_bl): 실제 PostgreSQL 18 에 마이그레이션을 올렸다 내렸다 한 뒤 pytest.
+    # Jenkinsfile 의 Gateway Smoke Tests 단계와 같은 순서를 CI 에서 재현한다.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # ci_test_only 는 CI 전용 값이다. 운영 자격증명이 아님.
+      DATABASE_URL: postgresql://smart_ebl:ci_test_only@localhost:5432/smart_ebl
+      AUTH_MODE: bootstrap
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: smart_ebl
+          POSTGRES_USER: smart_ebl
+          POSTGRES_PASSWORD: ci_test_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smart_ebl -d smart_ebl"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: 의존성 설치 (lock 고정)
+        run: uv sync --locked
+
+      - name: 마이그레이션 적용 → 되돌리기 → 재적용
+        run: |
+          uv run alembic upgrade head
+          uv run alembic downgrade 0001_baseline
+          uv run alembic upgrade head
+
+      - name: pytest 실행
+        run: uv run pytest src/smart_e_bl/tests/ -q
+
+      - name: 운영 이미지 빌드 (게이트웨이)
+        run: docker build -f infra/docker/gateway.Dockerfile -t smart-ebl-gateway-ci .

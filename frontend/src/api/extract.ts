@@ -1,11 +1,11 @@
 /**
- * F1 서류 인테이크 — 파일을 aiService로 보내 필드를 추출합니다.
+ * F1 서류 인테이크 — 파일을 게이트웨이(→ aiService)로 보내 필드를 추출합니다.
  *
  * 화면(S2Upload)은 이 함수 하나만 부르면 됩니다. 확장자별로 어느 엔드포인트로
  * 보낼지는 여기서 결정합니다.
  */
 
-import { ApiError, postForm } from './client';
+import { ApiError, gatewayTenantAiPath, postForm } from './client';
 import { toDraftFields } from './adaptersExtract';
 import type { WireBLDraft } from './wireExtract';
 import type { FieldValue } from '../types/domain';
@@ -24,7 +24,7 @@ export interface ExtractOptions {
 }
 
 /**
- * 파일을 확장자로 보고 알맞은 aiService 엔드포인트로 보냅니다.
+ * 파일을 확장자로 보고 알맞은 AI 엔드포인트로 보냅니다.
  *
  * ⚠ `.txt`는 SUPPORTED_INPUT.ACCEPTED_EXT(constants/domain.ts)에는 있지만,
  *   백엔드에 대응하는 추출 엔드포인트가 없습니다(`/lc/mt700`은 SWIFT MT700
@@ -42,14 +42,14 @@ export async function extractDraft(file: File, options: ExtractOptions = {}): Pr
   if (ext === '.pdf') {
     page = (options.page ?? 0) + 1;
     draft = await postForm<WireBLDraft>(
-      '/extract/pdf',
+      gatewayTenantAiPath('extract/pdf'),
       form,
       { page: options.page ?? 0 },
       options.signal,
     );
   } else if (IMAGE_EXT.includes(ext)) {
     page = 1;
-    draft = await postForm<WireBLDraft>('/extract', form, undefined, options.signal);
+    draft = await postForm<WireBLDraft>(gatewayTenantAiPath('extract'), form, undefined, options.signal);
   } else {
     throw new ApiError(0, '이 형식은 아직 자동 추출을 지원하지 않습니다.');
   }
